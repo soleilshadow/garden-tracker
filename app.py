@@ -5,8 +5,8 @@ app = Flask(__name__, static_folder="static")
 
 # ── Config (set these as environment variables on Railway) ──
 ANTHROPIC_API_KEY = os.environ.get("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", "")
-SUPABASE_URL      = os.environ.get("SUPABASE_URL", "")
-SUPABASE_KEY      = os.environ.get("SUPABASE_KEY", "")
+SUPABASE_URL      = os.environ.get("https://serucsjjrgwaedwlnyxb.supabase.co", "")
+SUPABASE_KEY      = os.environ.get("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlcnVjc2pqcmd3YWVkd2xueXhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwNjM0NzEsImV4cCI6MjA5MjYzOTQ3MX0.woxRyPI-BXoxkk6fP1gVrmV1-RnYn2deoKsxOHMPG58", "")
 PLANTS_ROW_ID     = 1   # we store all plants in a single JSON row
 
 # ── Anthropic client ────────────────────────────────────────
