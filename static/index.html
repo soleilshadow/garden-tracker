@@ -7,982 +7,979 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Garden Tracker" />
   <title>Garden Tracker Pro</title>
-
-  <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- React -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
-
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f5f7; color: #1c1c1e; -webkit-tap-highlight-color: transparent; }
     :root {
-      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      --color-bg: #ffffff;
-      --color-bg2: #f2f2f7;
-      --color-bg3: #f5f5f7;
-      --color-text: #1c1c1e;
-      --color-text2: #6e6e73;
-      --color-border: #d1d1d6;
-      --color-border2: #e5e5ea;
-      --color-green: #1D9E75;
-      --color-green-light: #E1F5EE;
-      --color-red: #E24B4A;
-      --color-orange: #EF9F27;
-      --color-blue: #185FA5;
-      --color-blue-light: #E6F1FB;
+      --bg: #ffffff; --bg2: #f2f2f7; --bg3: #f5f5f7;
+      --text: #1c1c1e; --text2: #6e6e73;
+      --border: #d1d1d6; --border2: #e5e5ea;
+      --green: #1D9E75; --green-l: #E1F5EE;
+      --red: #E24B4A; --orange: #EF9F27;
+      --blue: #185FA5; --blue-l: #E6F1FB;
     }
     textarea, input, select, button { font-family: inherit; }
-    input[type=number]::-webkit-inner-spin-button { opacity: 1; }
     button { -webkit-tap-highlight-color: transparent; }
-    /* Safe area for iPhone notch */
-    .safe-bottom { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
-    .safe-top { padding-top: max(12px, env(safe-area-inset-top)); }
+
+    /* ── iOS-safe photo button ── */
+    .photo-btn-wrap {
+      position: relative;
+      overflow: hidden;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .photo-btn-wrap input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+      font-size: 0;          /* hides text on some browsers */
+      -webkit-appearance: none;
+    }
+    .photo-btn-wrap input[type="file"]::-webkit-file-upload-button {
+      display: none;         /* hide default button inside overlay */
+    }
+
+    /* Hero photo picker (full-width) */
+    .photo-picker-hero {
+      width: 100%;
+      height: 160px;
+      background: var(--green-l);
+      border-radius: 14px;
+      border: 1.5px dashed var(--green);
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+      cursor: pointer;
+      margin-bottom: 14px;
+    }
+    .photo-picker-hero input[type="file"] {
+      position: absolute; inset: 0; opacity: 0;
+      width: 100%; height: 100%; cursor: pointer;
+    }
   </style>
 </head>
 <body>
-  <div id="root"></div>
-  <script type="text/babel">
-    const { useState, useRef, useEffect, useCallback } = React;
+<div id="root"></div>
+<script type="text/babel">
+  const { useState, useRef, useEffect } = React;
 
-    // ── Supabase ──────────────────────────────────────────────────
-    const SUPA_URL = "https://serucsjjrgwaedwlnyxb.supabase.co";
-    const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlcnVjc2pqcmd3YWVkd2xueXhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwNjM0NzEsImV4cCI6MjA5MjYzOTQ3MX0.woxRyPI-BXoxkk6fP1gVrmV1-RnYn2deoKsxOHMPG58";
-    const ADMIN_EMAIL = "shawn.ngcheechung@gmail.com";
-    const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
+  const SUPA_URL    = "https://serucsjjrgwaedwlnyxb.supabase.co";
+  const SUPA_KEY    = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlcnVjc2pqcmd3YWVkd2xueXhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwNjM0NzEsImV4cCI6MjA5MjYzOTQ3MX0.woxRyPI-BXoxkk6fP1gVrmV1-RnYn2deoKsxOHMPG58";
+  const ADMIN_EMAIL = "shawn.ngcheechung@gmail.com";
+  const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
 
-    // ── Language ──────────────────────────────────────────────────
-    const T = {
-      en: {
-        appName:"Garden Tracker", dashboard:"Dashboard", myPlants:"My Plants",
-        addPlant:"+ Plant", aiDoctor:"AI Doctor", healthy:"Healthy",
-        needsWater:"Needs water", needsFert:"Needs fertilizer",
-        overdueTitle:"Needs Attention", allGood:"All plants are happy!",
-        water:"Water", fertilize:"Fertilize",
-        daysAgo:"d ago", due:"Due today", inDays:"in", days:"d",
-        overdue:"Overdue", neverLogged:"Never",
-        plantName:"Plant Name", species:"Species", location:"Location",
-        waterFreq:"Water every (days)", fertFreq:"Fertilize every (days)",
-        addPhoto:"Take / Upload Photo", aiIdentify:"AI Identify from Photo",
-        identifying:"Identifying...", save:"Save Plant", cancel:"Cancel",
-        careDetails:"Care Details", growthJournal:"Growth Journal",
-        careLog:"Care Log", addNote:"Add note...", addEntry:"Add",
-        watered:"Watered 💧", fertilized:"Fertilized 🌿",
-        deletePlant:"Delete Plant", editDetails:"Edit", saveChanges:"Save Changes",
-        askAnything:"Ask anything about your plants...", send:"Send",
-        thinking:"Thinking...", selectPlant:"Select a plant (optional)",
-        noPlants:"No plants yet. Tap '+ Plant' to add your first!",
-        mainPhoto:"Change Photo", sunlight:"Sunlight", soil:"Soil",
-        tips:"Tips", aiNotes:"AI Plant Notes", lang:"中文",
-        loading:"Loading...", noJournal:"No journal entries yet.",
-        noLog:"No care logs yet.", saveJournal:"Save to Journal",
-        savedJournal:"Saved ✓", skipSave:"Skip",
-        addOwnNote:"Add your own note (optional)...",
-        savePrompt:"💾 Save to plant journal",
-        photoReady:"Photo ready", signIn:"Sign In", signUp:"Sign Up",
-        email:"Email", password:"Password", username:"Your Name",
-        signInGoogle:"Continue with Google", signOut:"Sign Out",
-        signingIn:"Signing in...", orDivider:"or",
-        allUsers:"All Users", myAccount:"My Account",
-        adminPanel:"Admin Panel", role:"Role", admin:"Admin", member:"Member",
-        welcomeBack:"Welcome back", createAccount:"Create your account",
-        forgotPassword:"Forgot password?", resetPassword:"Send Reset Email",
-        resetSent:"Reset email sent! Check your inbox.",
-        noAccount:"Don't have an account?", haveAccount:"Already have an account?",
-        authError:"Authentication error. Please try again.",
-      },
-      zh: {
-        appName:"花园追踪", dashboard:"仪表板", myPlants:"我的植物",
-        addPlant:"+ 添加植物", aiDoctor:"AI 植物医生", healthy:"健康",
-        needsWater:"需要浇水", needsFert:"需要施肥",
-        overdueTitle:"需要关注", allGood:"所有植物状态良好！",
-        water:"浇水", fertilize:"施肥",
-        daysAgo:"天前", due:"今天到期", inDays:"还有", days:"天",
-        overdue:"已逾期", neverLogged:"从未",
-        plantName:"植物名称", species:"品种", location:"位置",
-        waterFreq:"浇水频率（天）", fertFreq:"施肥频率（天）",
-        addPhoto:"拍照 / 上传照片", aiIdentify:"AI 识别植物",
-        identifying:"识别中...", save:"保存植物", cancel:"取消",
-        careDetails:"养护详情", growthJournal:"生长日志",
-        careLog:"养护记录", addNote:"添加备注...", addEntry:"添加",
-        watered:"已浇水 💧", fertilized:"已施肥 🌿",
-        deletePlant:"删除植物", editDetails:"编辑", saveChanges:"保存更改",
-        askAnything:"随时询问关于您植物的问题...", send:"发送",
-        thinking:"思考中...", selectPlant:"选择植物（可选）",
-        noPlants:"还没有植物，点击「添加植物」开始吧！",
-        mainPhoto:"更换照片", sunlight:"光照", soil:"土壤",
-        tips:"养护建议", aiNotes:"AI 植物说明", lang:"EN",
-        loading:"加载中...", noJournal:"还没有日志记录。",
-        noLog:"还没有养护记录。", saveJournal:"保存到日志",
-        savedJournal:"已保存 ✓", skipSave:"跳过",
-        addOwnNote:"添加您自己的备注（可选）...",
-        savePrompt:"💾 保存到植物日志",
-        photoReady:"照片已准备好", signIn:"登录", signUp:"注册",
-        email:"邮箱", password:"密码", username:"您的姓名",
-        signInGoogle:"使用 Google 登录", signOut:"退出登录",
-        signingIn:"登录中...", orDivider:"或",
-        allUsers:"所有用户", myAccount:"我的账户",
-        adminPanel:"管理员面板", role:"角色", admin:"管理员", member:"成员",
-        welcomeBack:"欢迎回来", createAccount:"创建账户",
-        forgotPassword:"忘记密码？", resetPassword:"发送重置邮件",
-        resetSent:"重置邮件已发送！请查收。",
-        noAccount:"还没有账户？", haveAccount:"已有账户？",
-        authError:"认证错误，请重试。",
+  // ── i18n ─────────────────────────────────────────────────────
+  const T = {
+    en: {
+      appName:"Garden Tracker", dashboard:"Dashboard", myPlants:"My Plants",
+      addPlant:"+ Plant", aiDoctor:"AI Doctor", healthy:"Healthy",
+      needsWater:"Needs water", needsFert:"Needs fertilizer",
+      overdueTitle:"Needs Attention", allGood:"All plants are happy!",
+      water:"Water", fertilize:"Fertilize",
+      daysAgo:"d ago", due:"Due today", inDays:"in", days:"d",
+      overdue:"Overdue", plantName:"Plant Name", species:"Species",
+      location:"Location", waterFreq:"Water every (days)", fertFreq:"Fertilize every (days)",
+      addPhoto:"📷 Take / Upload Photo", aiIdentify:"🤖 AI Identify from Photo",
+      identifying:"Identifying...", save:"Save Plant", cancel:"Cancel",
+      careDetails:"Care Details", growthJournal:"Growth Journal", careLog:"Care Log",
+      addNote:"Add note...", addEntry:"Add", watered:"Watered 💧", fertilized:"Fertilized 🌿",
+      deletePlant:"Delete Plant", editDetails:"Edit", saveChanges:"Save Changes",
+      askAnything:"Ask anything about your plants...", send:"Send", thinking:"Thinking...",
+      selectPlant:"Select a plant (optional)", noPlants:"No plants yet. Tap '+ Plant' to add your first!",
+      mainPhoto:"📷 Change Photo", sunlight:"Sunlight", soil:"Soil", tips:"Tips",
+      aiNotes:"AI Plant Notes", lang:"中文", loading:"Loading...",
+      noJournal:"No journal entries yet.", noLog:"No care logs yet.",
+      saveJournal:"Save to Journal", savedJournal:"Saved ✓", skipSave:"Skip",
+      addOwnNote:"Add your own note (optional)...", savePrompt:"💾 Save to plant journal",
+      photoReady:"Photo ready", signIn:"Sign In", signUp:"Sign Up",
+      email:"Email", password:"Password", username:"Your Name",
+      signInGoogle:"Continue with Google", signOut:"Sign Out",
+      signingIn:"Signing in...", orDivider:"or", adminPanel:"Admin Panel",
+      welcomeBack:"Welcome back", createAccount:"Create your account",
+      forgotPassword:"Forgot password?", resetPassword:"Send Reset Email",
+      resetSent:"Reset email sent! Check your inbox.",
+      noAccount:"Don't have an account?", haveAccount:"Already have an account?",
+      authError:"Authentication error. Please try again.",
+      changePhoto:"📷 Change Photo", addJournalPhoto:"📷 Add Photo",
+    },
+    zh: {
+      appName:"花园追踪", dashboard:"仪表板", myPlants:"我的植物",
+      addPlant:"+ 添加植物", aiDoctor:"AI 植物医生", healthy:"健康",
+      needsWater:"需要浇水", needsFert:"需要施肥",
+      overdueTitle:"需要关注", allGood:"所有植物状态良好！",
+      water:"浇水", fertilize:"施肥",
+      daysAgo:"天前", due:"今天到期", inDays:"还有", days:"天",
+      overdue:"已逾期", plantName:"植物名称", species:"品种",
+      location:"位置", waterFreq:"浇水频率（天）", fertFreq:"施肥频率（天）",
+      addPhoto:"📷 拍照 / 上传照片", aiIdentify:"🤖 AI 识别植物",
+      identifying:"识别中...", save:"保存植物", cancel:"取消",
+      careDetails:"养护详情", growthJournal:"生长日志", careLog:"养护记录",
+      addNote:"添加备注...", addEntry:"添加", watered:"已浇水 💧", fertilized:"已施肥 🌿",
+      deletePlant:"删除植物", editDetails:"编辑", saveChanges:"保存更改",
+      askAnything:"随时询问关于您植物的问题...", send:"发送", thinking:"思考中...",
+      selectPlant:"选择植物（可选）", noPlants:"还没有植物，点击「添加植物」开始吧！",
+      mainPhoto:"📷 更换照片", sunlight:"光照", soil:"土壤", tips:"养护建议",
+      aiNotes:"AI 植物说明", lang:"EN", loading:"加载中...",
+      noJournal:"还没有日志记录。", noLog:"还没有养护记录。",
+      saveJournal:"保存到日志", savedJournal:"已保存 ✓", skipSave:"跳过",
+      addOwnNote:"添加您自己的备注（可选）...", savePrompt:"💾 保存到植物日志",
+      photoReady:"照片已准备好", signIn:"登录", signUp:"注册",
+      email:"邮箱", password:"密码", username:"您的姓名",
+      signInGoogle:"使用 Google 登录", signOut:"退出登录",
+      signingIn:"登录中...", orDivider:"或", adminPanel:"管理员面板",
+      welcomeBack:"欢迎回来", createAccount:"创建账户",
+      forgotPassword:"忘记密码？", resetPassword:"发送重置邮件",
+      resetSent:"重置邮件已发送！请查收。",
+      noAccount:"还没有账户？", haveAccount:"已有账户？",
+      authError:"认证错误，请重试。",
+      changePhoto:"📷 更换照片", addJournalPhoto:"📷 添加照片",
+    }
+  };
+
+  // ── Helpers ───────────────────────────────────────────────────
+  function toBase64(file) {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result.split(",")[1]);
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+  }
+
+  async function callClaude(messages, system) {
+    const res = await fetch("/api/claude", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, system, messages })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    return data.content?.map(b => b.text || "").join("") || "";
+  }
+
+  const statusOf = (p, t) => {
+    const now = Date.now();
+    const wDue = p.lastWatered    ? p.lastWatered    + p.waterFreqDays * 864e5 : now - 1;
+    const fDue = p.lastFertilized ? p.lastFertilized + p.fertFreqDays  * 864e5 : now + 1e10;
+    if (wDue < now) return { label: t.needsWater, color: "#E24B4A" };
+    if (fDue < now) return { label: t.needsFert,  color: "#EF9F27" };
+    return { label: t.healthy, color: "#1D9E75" };
+  };
+
+  const daysUntil = (last, freq) => {
+    if (!last) return -freq;
+    return Math.ceil((last + freq * 864e5 - Date.now()) / 864e5);
+  };
+
+  const fmtDate = (ts, lang) => {
+    if (!ts) return "—";
+    const d = Math.floor((Date.now() - ts) / 864e5);
+    if (d === 0) return lang === "zh" ? "今天" : "Today";
+    return lang === "zh" ? `${d}天前` : `${d}d ago`;
+  };
+
+  const fmtFull = (ts, lang) =>
+    new Date(ts).toLocaleDateString(lang === "zh" ? "zh-CN" : "en-GB",
+      { day: "numeric", month: "short", year: "numeric" });
+
+  // ── PhotoButton — iOS Safari safe ─────────────────────────────
+  // Renders a visible styled label with an overlaid transparent file input.
+  // Works on iOS Safari over HTTPS without needing useRef click triggers.
+  function PhotoButton({ label, onPhoto, style = {}, children }) {
+    const handleChange = async (e) => {
+      const f = e.target.files[0];
+      if (!f) return;
+      const b64 = await toBase64(f);
+      onPhoto(b64, f.type);
+      e.target.value = ""; // reset so same file can be re-selected
+    };
+    return (
+      <div className="photo-btn-wrap" style={style}>
+        <div style={{ pointerEvents: "none", width: "100%", textAlign: "center" }}>
+          {children || label}
+        </div>
+        <input type="file" accept="image/*" capture="environment" onChange={handleChange} />
+      </div>
+    );
+  }
+
+  // ── Auth Screen ───────────────────────────────────────────────
+  function AuthScreen({ t, lang }) {
+    const [mode,     setMode]     = useState("signin");
+    const [email,    setEmail]    = useState("");
+    const [password, setPassword] = useState("");
+    const [username, setUsername] = useState("");
+    const [loading,  setLoading]  = useState(false);
+    const [error,    setError]    = useState("");
+    const [msg,      setMsg]      = useState("");
+
+    const handleEmailAuth = async () => {
+      setError(""); setMsg(""); setLoading(true);
+      try {
+        if (mode === "reset") {
+          await supa.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+          setMsg(t.resetSent);
+        } else if (mode === "signup") {
+          const { error: e } = await supa.auth.signUp({ email, password, options: { data: { username: username || email.split("@")[0] } } });
+          if (e) throw e;
+          setMsg(lang === "zh" ? "注册成功！请检查邮箱确认账户。" : "Signed up! Check your email to confirm.");
+        } else {
+          const { error: e } = await supa.auth.signInWithPassword({ email, password });
+          if (e) throw e;
+        }
+      } catch(e) { setError(e.message || t.authError); }
+      setLoading(false);
+    };
+
+    const handleGoogle = () => supa.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } });
+
+    return (
+      <div style={{ minHeight: "100vh", background: "linear-gradient(135deg,#E1F5EE 0%,#f5f5f7 60%)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px 16px" }}>
+        <div style={{ background: "#fff", borderRadius: 20, padding: "32px 24px", width: "100%", maxWidth: 400, boxShadow: "0 4px 24px rgba(0,0,0,0.08)" }}>
+          <div style={{ textAlign: "center", marginBottom: 28 }}>
+            <div style={{ width: 56, height: 56, background: "#E1F5EE", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 22V12M12 12C12 12 7 9 5 5C9 3 12 6 12 6M12 12C12 12 17 9 19 5C15 3 12 6 12 6" stroke="#1D9E75" strokeWidth="2.5" strokeLinecap="round"/></svg>
+            </div>
+            <div style={{ fontWeight: 700, fontSize: 20 }}>{t.appName}</div>
+            <div style={{ fontSize: 13, color: "#6e6e73", marginTop: 4 }}>
+              {mode==="signin"?t.welcomeBack:mode==="signup"?t.createAccount:t.forgotPassword}
+            </div>
+          </div>
+
+          {mode !== "reset" && (
+            <>
+              <button onClick={handleGoogle} style={{ width: "100%", padding: "12px", borderRadius: 12, border: "0.5px solid #d1d1d6", background: "#fff", cursor: "pointer", fontSize: 14, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 16 }}>
+                <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+                {t.signInGoogle}
+              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                <div style={{ flex: 1, height: 1, background: "#e5e5ea" }} />
+                <span style={{ fontSize: 12, color: "#6e6e73" }}>{t.orDivider}</span>
+                <div style={{ flex: 1, height: 1, background: "#e5e5ea" }} />
+              </div>
+            </>
+          )}
+
+          {mode==="signup" && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 12, color: "#6e6e73", marginBottom: 4 }}>{t.username}</div>
+              <input value={username} onChange={e=>setUsername(e.target.value)} placeholder={lang==="zh"?"您的姓名":"Your name"} style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "0.5px solid #d1d1d6", fontSize: 15, background: "#f2f2f7" }} />
+            </div>
+          )}
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 12, color: "#6e6e73", marginBottom: 4 }}>{t.email}</div>
+            <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@email.com" style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "0.5px solid #d1d1d6", fontSize: 15, background: "#f2f2f7" }} />
+          </div>
+          {mode!=="reset" && (
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ fontSize: 12, color: "#6e6e73", marginBottom: 4 }}>{t.password}</div>
+              <input type="password" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleEmailAuth()} placeholder="••••••••" style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "0.5px solid #d1d1d6", fontSize: 15, background: "#f2f2f7" }} />
+            </div>
+          )}
+
+          {error && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 10, padding: "8px 12px", background: "#FFF0F0", borderRadius: 8 }}>{error}</div>}
+          {msg   && <div style={{ fontSize: 12, color: "#1D9E75", marginBottom: 10, padding: "8px 12px", background: "#E1F5EE", borderRadius: 8 }}>{msg}</div>}
+
+          <button onClick={handleEmailAuth} disabled={loading} style={{ width: "100%", padding: "13px", borderRadius: 12, border: "none", background: loading?"#9FE1CB":"#1D9E75", color: "#fff", cursor: loading?"default":"pointer", fontSize: 15, fontWeight: 600, marginTop: 4 }}>
+            {loading?t.signingIn:mode==="reset"?t.resetPassword:mode==="signup"?t.signUp:t.signIn}
+          </button>
+
+          <div style={{ marginTop: 20, textAlign: "center", fontSize: 13, color: "#6e6e73" }}>
+            {mode==="signin" && <>
+              <span>{t.noAccount} </span>
+              <button onClick={()=>{setMode("signup");setError("");setMsg("");}} style={{ background:"none",border:"none",color:"#1D9E75",cursor:"pointer",fontWeight:500,fontSize:13 }}>{t.signUp}</button>
+              <div style={{ marginTop: 8 }}>
+                <button onClick={()=>{setMode("reset");setError("");setMsg("");}} style={{ background:"none",border:"none",color:"#6e6e73",cursor:"pointer",fontSize:13 }}>{t.forgotPassword}</button>
+              </div>
+            </>}
+            {mode==="signup" && <>
+              <span>{t.haveAccount} </span>
+              <button onClick={()=>{setMode("signin");setError("");setMsg("");}} style={{ background:"none",border:"none",color:"#1D9E75",cursor:"pointer",fontWeight:500,fontSize:13 }}>{t.signIn}</button>
+            </>}
+            {mode==="reset" && <button onClick={()=>{setMode("signin");setError("");setMsg("");}} style={{ background:"none",border:"none",color:"#1D9E75",cursor:"pointer",fontWeight:500,fontSize:13 }}>← {t.signIn}</button>}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── App ───────────────────────────────────────────────────────
+  function App() {
+    const [lang, setLang]             = useState("en");
+    const t = T[lang];
+    const [session, setSession]       = useState(null);
+    const [profile, setProfile]       = useState(null);
+    const [plants, setPlants]         = useState([]);
+    const [allUsers, setAllUsers]     = useState([]);
+    const [loading, setLoading]       = useState(true);
+    const [view, setView]             = useState("dashboard");
+    const [selectedId, setSelectedId] = useState(null);
+    const [showAdd, setShowAdd]       = useState(false);
+    const [showDoctor, setShowDoctor] = useState(false);
+    const [showAdmin, setShowAdmin]   = useState(false);
+
+    useEffect(() => {
+      supa.auth.getSession().then(({ data: { session } }) => setSession(session));
+      const { data: { subscription } } = supa.auth.onAuthStateChange((_e, s) => setSession(s));
+      return () => subscription.unsubscribe();
+    }, []);
+
+    useEffect(() => {
+      if (!session) { setLoading(false); setPlants([]); setProfile(null); return; }
+      setLoading(true);
+      loadProfile();
+    }, [session]);
+
+    const loadProfile = async () => {
+      const { data } = await supa.from("profiles").select("*").eq("id", session.user.id).single();
+      if (data && session.user.email === ADMIN_EMAIL && data.role !== "admin") {
+        await supa.from("profiles").update({ role: "admin" }).eq("id", session.user.id);
+        data.role = "admin";
+      }
+      setProfile(data);
+      if (data?.role === "admin") {
+        const { data: users } = await supa.from("profiles").select("*").order("created_at");
+        setAllUsers(users || []);
+      }
+      loadPlants(data);
+    };
+
+    const loadPlants = async (prof) => {
+      const p = prof || profile;
+      let q = supa.from("plants").select("*").order("id");
+      if (p?.role !== "admin") q = q.eq("user_id", session.user.id);
+      const { data } = await q;
+      setPlants((data || []).map(r => ({ ...r.data, _rowId: r.id, _userId: r.user_id })));
+      setLoading(false);
+    };
+
+    const savePlant = async (plant) => {
+      const { _rowId, _userId, ...data } = plant;
+      if (_rowId) {
+        await supa.from("plants").update({ data, updated_at: new Date().toISOString() }).eq("id", _rowId);
+        return plant;
+      } else {
+        const { data: row } = await supa.from("plants").insert({ user_id: session.user.id, data }).select().single();
+        return { ...plant, _rowId: row.id, _userId: row.user_id };
       }
     };
 
-    // ── Helpers ───────────────────────────────────────────────────
-    function toBase64(file) {
-      return new Promise((res, rej) => {
-        const r = new FileReader();
-        r.onload = () => res(r.result.split(",")[1]);
-        r.onerror = rej;
-        r.readAsDataURL(file);
-      });
-    }
+    const up = async (newPlants) => {
+      setPlants(newPlants);
+      for (const p of newPlants) {
+        const orig = plants.find(o => o.id === p.id);
+        if (JSON.stringify(orig) !== JSON.stringify(p)) await savePlant(p);
+      }
+    };
 
-    async function callClaude(messages, system) {
-      const res = await fetch("/api/claude", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, system, messages })
-      });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      return data.content?.map(b => b.text || "").join("") || "";
-    }
+    const addPlant = async (plant) => {
+      const saved = await savePlant(plant);
+      setPlants(prev => [...prev, saved]);
+    };
 
-    const statusOf = (p, t) => {
+    const deletePlant = async (id) => {
+      const plant = plants.find(p => p.id === id);
+      if (plant?._rowId) await supa.from("plants").delete().eq("id", plant._rowId);
+      setPlants(prev => prev.filter(p => p.id !== id));
+      setView("plants"); setSelectedId(null);
+    };
+
+    const logCare = (id, type) => {
       const now = Date.now();
-      const wDue = p.lastWatered    ? p.lastWatered    + p.waterFreqDays * 864e5 : now - 1;
-      const fDue = p.lastFertilized ? p.lastFertilized + p.fertFreqDays  * 864e5 : now + 1e10;
-      if (wDue < now) return { label: t.needsWater, color: "#E24B4A" };
-      if (fDue < now) return { label: t.needsFert,  color: "#EF9F27" };
-      return { label: t.healthy, color: "#1D9E75" };
+      const label = type === "water" ? T[lang].watered : T[lang].fertilized;
+      const newPlants = plants.map(p => {
+        if (p.id !== id) return p;
+        const jEntry = { id: now, ts: now, note: label, photo: null, photoType: null, source: "care-log" };
+        return { ...p, [type==="water"?"lastWatered":"lastFertilized"]: now, log: [...(p.log||[]), {type,ts:now}], journal: [...(p.journal||[]), jEntry] };
+      });
+      up(newPlants);
     };
 
-    const daysUntil = (last, freq) => {
-      if (!last) return -freq;
-      return Math.ceil((last + freq * 864e5 - Date.now()) / 864e5);
-    };
+    const selected = plants.find(p => p.id === selectedId);
 
-    const fmtDate = (ts, lang) => {
-      if (!ts) return "—";
-      const d = Math.floor((Date.now() - ts) / 864e5);
-      if (d === 0) return lang === "zh" ? "今天" : "Today";
-      return lang === "zh" ? `${d}天前` : `${d}d ago`;
-    };
+    if (!session) return <AuthScreen t={t} lang={lang} />;
 
-    const fmtFull = (ts, lang) =>
-      new Date(ts).toLocaleDateString(lang === "zh" ? "zh-CN" : "en-GB",
-        { day: "numeric", month: "short", year: "numeric" });
+    return (
+      <div style={{ background: "#f5f5f7", minHeight: "100vh" }}>
+        {/* Header */}
+        <div style={{ background: "#fff", borderBottom: "0.5px solid #e5e5ea", padding: "12px 16px", paddingTop: "max(12px,env(safe-area-inset-top))", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 22V12M12 12C12 12 7 9 5 5C9 3 12 6 12 6M12 12C12 12 17 9 19 5C15 3 12 6 12 6" stroke="#1D9E75" strokeWidth="2" strokeLinecap="round"/></svg>
+            <span style={{ fontWeight: 600, fontSize: 15 }}>{t.appName}</span>
+            {profile?.role==="admin" && <span style={{ fontSize: 10, background: "#1D9E75", color: "#fff", borderRadius: 4, padding: "2px 6px" }}>Admin</span>}
+          </div>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <button onClick={()=>setLang(l=>l==="en"?"zh":"en")} style={{ fontSize: 11, padding: "5px 8px", borderRadius: 6, border: "0.5px solid #d1d1d6", background: "#f2f2f7", cursor: "pointer", color: "#6e6e73" }}>{t.lang}</button>
+            <button onClick={()=>setShowDoctor(true)} style={{ fontSize: 11, padding: "5px 8px", borderRadius: 6, border: "0.5px solid #d1d1d6", background: "#f2f2f7", cursor: "pointer" }}>{t.aiDoctor}</button>
+            {profile?.role==="admin" && <button onClick={()=>setShowAdmin(true)} style={{ fontSize: 11, padding: "5px 8px", borderRadius: 6, border: "0.5px solid #d1d1d6", background: "#f2f2f7", cursor: "pointer" }}>👥</button>}
+            <button onClick={()=>setShowAdd(true)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 8, border: "none", background: "#1D9E75", color: "#fff", cursor: "pointer", fontWeight: 500 }}>{t.addPlant}</button>
+          </div>
+        </div>
 
-    // ── Auth Screen ───────────────────────────────────────────────
-    function AuthScreen({ t, lang }) {
-      const [mode,     setMode]     = useState("signin"); // signin | signup | reset
-      const [email,    setEmail]    = useState("");
-      const [password, setPassword] = useState("");
-      const [username, setUsername] = useState("");
-      const [loading,  setLoading]  = useState(false);
-      const [error,    setError]    = useState("");
-      const [msg,      setMsg]      = useState("");
-
-      const handleEmailAuth = async () => {
-        setError(""); setMsg(""); setLoading(true);
-        try {
-          if (mode === "reset") {
-            await supa.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
-            setMsg(t.resetSent);
-          } else if (mode === "signup") {
-            const { error: e } = await supa.auth.signUp({
-              email, password,
-              options: { data: { username: username || email.split("@")[0] } }
-            });
-            if (e) throw e;
-            setMsg(lang === "zh" ? "注册成功！请检查邮箱确认账户。" : "Signed up! Check your email to confirm.");
-          } else {
-            const { error: e } = await supa.auth.signInWithPassword({ email, password });
-            if (e) throw e;
-          }
-        } catch(e) { setError(e.message || t.authError); }
-        setLoading(false);
-      };
-
-      const handleGoogle = async () => {
-        setError("");
-        await supa.auth.signInWithOAuth({
-          provider: "google",
-          options: { redirectTo: window.location.origin }
-        });
-      };
-
-      return (
-        <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #E1F5EE 0%, #f5f5f7 60%)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px 16px" }}>
-          <div style={{ background: "#fff", borderRadius: 20, padding: "32px 24px", width: "100%", maxWidth: 400, boxShadow: "0 4px 24px rgba(0,0,0,0.08)" }}>
-
-            {/* Logo */}
-            <div style={{ textAlign: "center", marginBottom: 28 }}>
-              <div style={{ width: 56, height: 56, background: "#E1F5EE", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 22V12M12 12C12 12 7 9 5 5C9 3 12 6 12 6M12 12C12 12 17 9 19 5C15 3 12 6 12 6" stroke="#1D9E75" strokeWidth="2.5" strokeLinecap="round"/></svg>
-              </div>
-              <div style={{ fontWeight: 700, fontSize: 20, color: "#1c1c1e" }}>{t.appName}</div>
-              <div style={{ fontSize: 13, color: "#6e6e73", marginTop: 4 }}>
-                {mode === "signin" ? t.welcomeBack : mode === "signup" ? t.createAccount : t.forgotPassword}
-              </div>
-            </div>
-
-            {/* Google button */}
-            {mode !== "reset" && (
-              <>
-                <button onClick={handleGoogle} style={{ width: "100%", padding: "12px", borderRadius: 12, border: "0.5px solid #d1d1d6", background: "#fff", cursor: "pointer", fontSize: 14, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 16 }}>
-                  <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-                  {t.signInGoogle}
-                </button>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-                  <div style={{ flex: 1, height: 1, background: "#e5e5ea" }} />
-                  <span style={{ fontSize: 12, color: "#6e6e73" }}>{t.orDivider}</span>
-                  <div style={{ flex: 1, height: 1, background: "#e5e5ea" }} />
-                </div>
-              </>
-            )}
-
-            {/* Form */}
-            {mode === "signup" && (
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 12, color: "#6e6e73", marginBottom: 4 }}>{t.username}</div>
-                <input value={username} onChange={e => setUsername(e.target.value)} placeholder={lang === "zh" ? "您的姓名" : "Your name"} style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "0.5px solid #d1d1d6", fontSize: 15, background: "#f2f2f7", color: "#1c1c1e" }} />
-              </div>
-            )}
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 12, color: "#6e6e73", marginBottom: 4 }}>{t.email}</div>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@email.com" style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "0.5px solid #d1d1d6", fontSize: 15, background: "#f2f2f7", color: "#1c1c1e" }} />
-            </div>
-            {mode !== "reset" && (
-              <div style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 12, color: "#6e6e73", marginBottom: 4 }}>{t.password}</div>
-                <input type="password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && handleEmailAuth()} placeholder="••••••••" style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "0.5px solid #d1d1d6", fontSize: 15, background: "#f2f2f7", color: "#1c1c1e" }} />
-              </div>
-            )}
-
-            {error && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 10, padding: "8px 12px", background: "#FFF0F0", borderRadius: 8 }}>{error}</div>}
-            {msg   && <div style={{ fontSize: 12, color: "#1D9E75", marginBottom: 10, padding: "8px 12px", background: "#E1F5EE", borderRadius: 8 }}>{msg}</div>}
-
-            <button onClick={handleEmailAuth} disabled={loading} style={{ width: "100%", padding: "13px", borderRadius: 12, border: "none", background: loading ? "#9FE1CB" : "#1D9E75", color: "#fff", cursor: loading ? "default" : "pointer", fontSize: 15, fontWeight: 600, marginTop: 4 }}>
-              {loading ? t.signingIn : mode === "reset" ? t.resetPassword : mode === "signup" ? t.signUp : t.signIn}
+        {/* Nav */}
+        <div style={{ background: "#fff", borderBottom: "0.5px solid #e5e5ea", display: "flex", padding: "0 16px" }}>
+          {["dashboard","plants"].map(v => (
+            <button key={v} onClick={()=>{setView(v);setSelectedId(null);}} style={{ padding: "10px 14px", fontSize: 13, border: "none", background: "none", cursor: "pointer", borderBottom: view===v&&!selectedId?"2px solid #1D9E75":"2px solid transparent", color: view===v&&!selectedId?"#1D9E75":"#6e6e73", fontWeight: view===v&&!selectedId?500:400 }}>
+              {v==="dashboard"?t.dashboard:t.myPlants}
             </button>
-
-            {/* Mode switchers */}
-            <div style={{ marginTop: 20, textAlign: "center", fontSize: 13, color: "#6e6e73" }}>
-              {mode === "signin" && <>
-                <span>{t.noAccount} </span>
-                <button onClick={() => { setMode("signup"); setError(""); setMsg(""); }} style={{ background: "none", border: "none", color: "#1D9E75", cursor: "pointer", fontWeight: 500, fontSize: 13 }}>{t.signUp}</button>
-                <div style={{ marginTop: 8 }}>
-                  <button onClick={() => { setMode("reset"); setError(""); setMsg(""); }} style={{ background: "none", border: "none", color: "#6e6e73", cursor: "pointer", fontSize: 13 }}>{t.forgotPassword}</button>
-                </div>
-              </>}
-              {mode === "signup" && <>
-                <span>{t.haveAccount} </span>
-                <button onClick={() => { setMode("signin"); setError(""); setMsg(""); }} style={{ background: "none", border: "none", color: "#1D9E75", cursor: "pointer", fontWeight: 500, fontSize: 13 }}>{t.signIn}</button>
-              </>}
-              {mode === "reset" && (
-                <button onClick={() => { setMode("signin"); setError(""); setMsg(""); }} style={{ background: "none", border: "none", color: "#1D9E75", cursor: "pointer", fontWeight: 500, fontSize: 13 }}>← {t.signIn}</button>
-              )}
-            </div>
+          ))}
+          {selected && <button onClick={()=>setView("plant")} style={{ padding: "10px 14px", fontSize: 13, border: "none", background: "none", cursor: "pointer", borderBottom: view==="plant"?"2px solid #1D9E75":"2px solid transparent", color: view==="plant"?"#1D9E75":"#6e6e73", fontWeight: view==="plant"?500:400, maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selected.name}</button>}
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, padding: "0 4px" }}>
+            <span style={{ fontSize: 11, color: "#6e6e73", maxWidth: 70, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile?.username || session.user.email?.split("@")[0]}</span>
+            <button onClick={()=>supa.auth.signOut()} style={{ fontSize: 11, padding: "4px 8px", borderRadius: 6, border: "0.5px solid #d1d1d6", background: "none", cursor: "pointer", color: "#6e6e73" }}>{t.signOut}</button>
           </div>
         </div>
-      );
-    }
 
-    // ── App ───────────────────────────────────────────────────────
-    function App() {
-      const [lang,       setLang]      = useState("en");
-      const t = T[lang];
-      const [session,    setSession]   = useState(null);
-      const [profile,    setProfile]   = useState(null);
-      const [plants,     setPlants]    = useState([]);
-      const [allUsers,   setAllUsers]  = useState([]);
-      const [loading,    setLoading]   = useState(true);
-      const [view,       setView]      = useState("dashboard");
-      const [selectedId, setSelectedId]= useState(null);
-      const [showAdd,    setShowAdd]   = useState(false);
-      const [showDoctor, setShowDoctor]= useState(false);
-      const [showAdmin,  setShowAdmin] = useState(false);
-
-      // Auth listener
-      useEffect(() => {
-        supa.auth.getSession().then(({ data: { session } }) => setSession(session));
-        const { data: { subscription } } = supa.auth.onAuthStateChange((_e, s) => setSession(s));
-        return () => subscription.unsubscribe();
-      }, []);
-
-      // Load profile + plants when session changes
-      useEffect(() => {
-        if (!session) { setLoading(false); setPlants([]); setProfile(null); return; }
-        setLoading(true);
-        loadProfile();
-        loadPlants();
-      }, [session]);
-
-      const loadProfile = async () => {
-        const { data } = await supa.from("profiles").select("*").eq("id", session.user.id).single();
-        // Auto-set admin for admin email
-        if (data && session.user.email === ADMIN_EMAIL && data.role !== "admin") {
-          await supa.from("profiles").update({ role: "admin" }).eq("id", session.user.id);
-          data.role = "admin";
-        }
-        setProfile(data);
-        if (data?.role === "admin") loadAllUsers();
-      };
-
-      const loadAllUsers = async () => {
-        const { data } = await supa.from("profiles").select("*").order("created_at");
-        setAllUsers(data || []);
-      };
-
-      const loadPlants = async () => {
-        setLoading(true);
-        let query = supa.from("plants").select("*").order("id");
-        // Members only see their own plants
-        if (profile?.role !== "admin") query = query.eq("user_id", session.user.id);
-        const { data } = await query;
-        setPlants((data || []).map(r => ({ ...r.data, _rowId: r.id, _userId: r.user_id })));
-        setLoading(false);
-      };
-
-      // Reload plants after profile loads
-      useEffect(() => { if (profile && session) loadPlants(); }, [profile]);
-
-      const savePlant = async (plant) => {
-        const { _rowId, _userId, ...data } = plant;
-        if (_rowId) {
-          await supa.from("plants").update({ data, updated_at: new Date().toISOString() }).eq("id", _rowId);
-        } else {
-          const { data: row } = await supa.from("plants").insert({ user_id: session.user.id, data }).select().single();
-          return { ...plant, _rowId: row.id, _userId: row.user_id };
-        }
-        return plant;
-      };
-
-      const up = async (newPlants) => {
-        setPlants(newPlants);
-        // Save changed plants
-        for (const p of newPlants) {
-          const orig = plants.find(o => o.id === p.id);
-          if (JSON.stringify(orig) !== JSON.stringify(p)) await savePlant(p);
-        }
-      };
-
-      const addPlant = async (plant) => {
-        const saved = await savePlant(plant);
-        setPlants(prev => [...prev, saved]);
-      };
-
-      const deletePlant = async (id) => {
-        const plant = plants.find(p => p.id === id);
-        if (plant?._rowId) await supa.from("plants").delete().eq("id", plant._rowId);
-        setPlants(prev => prev.filter(p => p.id !== id));
-        setView("plants"); setSelectedId(null);
-      };
-
-      const logCare = (id, type) => {
-        const now = Date.now();
-        const label = type === "water" ? T[lang].watered : T[lang].fertilized;
-        const newPlants = plants.map(p => {
-          if (p.id !== id) return p;
-          const journalEntry = { id: now, ts: now, note: label, photo: null, photoType: null, source: "care-log" };
-          return { ...p, [type === "water" ? "lastWatered" : "lastFertilized"]: now, log: [...(p.log||[]), {type,ts:now}], journal: [...(p.journal||[]), journalEntry] };
-        });
-        up(newPlants);
-      };
-
-      const signOut = () => supa.auth.signOut();
-      const selected = plants.find(p => p.id === selectedId);
-
-      if (!session) return <AuthScreen t={t} lang={lang} />;
-
-      return (
-        <div style={{ fontFamily: "var(--font-sans)", background: "var(--color-bg3)", minHeight: "100vh" }}>
-
-          {/* Header */}
-          <div style={{ background: "var(--color-bg)", borderBottom: "0.5px solid var(--color-border2)", padding: "12px 16px", paddingTop: "max(12px, env(safe-area-inset-top))", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 20 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 22V12M12 12C12 12 7 9 5 5C9 3 12 6 12 6M12 12C12 12 17 9 19 5C15 3 12 6 12 6" stroke="#1D9E75" strokeWidth="2" strokeLinecap="round"/></svg>
-              <span style={{ fontWeight: 600, fontSize: 15 }}>{t.appName}</span>
-              {profile?.role === "admin" && <span style={{ fontSize: 10, background: "#1D9E75", color: "#fff", borderRadius: 4, padding: "2px 6px" }}>Admin</span>}
-            </div>
-            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              <button onClick={() => setLang(l => l==="en"?"zh":"en")} style={{ fontSize: 11, padding: "5px 8px", borderRadius: 6, border: "0.5px solid var(--color-border)", background: "var(--color-bg2)", cursor: "pointer", color: "var(--color-text2)" }}>{t.lang}</button>
-              <button onClick={() => setShowDoctor(true)} style={{ fontSize: 11, padding: "5px 8px", borderRadius: 6, border: "0.5px solid var(--color-border)", background: "var(--color-bg2)", cursor: "pointer" }}>{t.aiDoctor}</button>
-              {profile?.role === "admin" && <button onClick={() => setShowAdmin(true)} style={{ fontSize: 11, padding: "5px 8px", borderRadius: 6, border: "0.5px solid var(--color-border)", background: "var(--color-bg2)", cursor: "pointer" }}>👥</button>}
-              <button onClick={() => setShowAdd(true)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 8, border: "none", background: "#1D9E75", color: "#fff", cursor: "pointer", fontWeight: 500 }}>{t.addPlant}</button>
-            </div>
-          </div>
-
-          {/* Nav */}
-          <div style={{ background: "var(--color-bg)", borderBottom: "0.5px solid var(--color-border2)", display: "flex", padding: "0 16px" }}>
-            {["dashboard","plants"].map(v => (
-              <button key={v} onClick={() => { setView(v); setSelectedId(null); }} style={{ padding: "10px 14px", fontSize: 13, border: "none", background: "none", cursor: "pointer", borderBottom: view===v&&!selectedId?"2px solid #1D9E75":"2px solid transparent", color: view===v&&!selectedId?"#1D9E75":"var(--color-text2)", fontWeight: view===v&&!selectedId?500:400 }}>
-                {v==="dashboard" ? t.dashboard : t.myPlants}
-              </button>
-            ))}
-            {selected && (
-              <button onClick={() => setView("plant")} style={{ padding: "10px 14px", fontSize: 13, border: "none", background: "none", cursor: "pointer", borderBottom: view==="plant"?"2px solid #1D9E75":"2px solid transparent", color: view==="plant"?"#1D9E75":"var(--color-text2)", fontWeight: view==="plant"?500:400, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {selected.name}
-              </button>
-            )}
-            {/* User info */}
-            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, padding: "0 4px" }}>
-              <span style={{ fontSize: 11, color: "var(--color-text2)", maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile?.username || session.user.email?.split("@")[0]}</span>
-              <button onClick={signOut} style={{ fontSize: 11, padding: "4px 8px", borderRadius: 6, border: "0.5px solid var(--color-border)", background: "none", cursor: "pointer", color: "var(--color-text2)" }}>{t.signOut}</button>
-            </div>
-          </div>
-
-          {/* Content */}
-          <div style={{ padding: "14px 14px", maxWidth: 680, margin: "0 auto", paddingBottom: "max(80px, env(safe-area-inset-bottom))" }}>
-            {loading
-              ? <div style={{ textAlign: "center", padding: 40, color: "var(--color-text2)", fontSize: 14 }}>{t.loading}</div>
-              : <>
-                  {view==="dashboard" && <Dashboard plants={plants} t={t} lang={lang} onSelect={id=>{setSelectedId(id);setView("plant");}} onLog={logCare} isAdmin={profile?.role==="admin"} allUsers={allUsers} />}
-                  {view==="plants"    && <PlantList  plants={plants} t={t} lang={lang} onSelect={id=>{setSelectedId(id);setView("plant");}} isAdmin={profile?.role==="admin"} allUsers={allUsers} />}
-                  {view==="plant" && selected && <PlantProfile plant={selected} t={t} lang={lang} onUpdate={u=>up(plants.map(p=>p.id===u.id?u:p))} onLog={logCare} onDelete={deletePlant} />}
-                </>
-            }
-          </div>
-
-          {showAdd    && <AddPlantModal t={t} lang={lang} onClose={()=>setShowAdd(false)} onSave={plant=>{ addPlant(plant); setShowAdd(false); }} />}
-          {showDoctor && <AIDoctor plants={plants} t={t} lang={lang} onClose={()=>setShowDoctor(false)} onUpdatePlant={u=>up(plants.map(p=>p.id===u.id?u:p))} />}
-          {showAdmin  && <AdminPanel t={t} lang={lang} allUsers={allUsers} onClose={()=>setShowAdmin(false)} onRefresh={loadAllUsers} />}
+        {/* Content */}
+        <div style={{ padding: "14px", maxWidth: 680, margin: "0 auto", paddingBottom: "max(80px,env(safe-area-inset-bottom))" }}>
+          {loading
+            ? <div style={{ textAlign: "center", padding: 40, color: "#6e6e73", fontSize: 14 }}>{t.loading}</div>
+            : <>
+                {view==="dashboard" && <Dashboard plants={plants} t={t} lang={lang} onSelect={id=>{setSelectedId(id);setView("plant");}} onLog={logCare} isAdmin={profile?.role==="admin"} allUsers={allUsers} />}
+                {view==="plants"    && <PlantList  plants={plants} t={t} lang={lang} onSelect={id=>{setSelectedId(id);setView("plant");}} isAdmin={profile?.role==="admin"} allUsers={allUsers} />}
+                {view==="plant"&&selected && <PlantProfile plant={selected} t={t} lang={lang} onUpdate={u=>up(plants.map(p=>p.id===u.id?u:p))} onLog={logCare} onDelete={deletePlant} />}
+              </>
+          }
         </div>
-      );
-    }
 
-    // ── Admin Panel ───────────────────────────────────────────────
-    function AdminPanel({ t, lang, allUsers, onClose, onRefresh }) {
-      const [updating, setUpdating] = useState(null);
+        {showAdd    && <AddPlantModal t={t} lang={lang} onClose={()=>setShowAdd(false)} onSave={p=>{addPlant(p);setShowAdd(false);}} />}
+        {showDoctor && <AIDoctor plants={plants} t={t} lang={lang} onClose={()=>setShowDoctor(false)} onUpdatePlant={u=>up(plants.map(p=>p.id===u.id?u:p))} />}
+        {showAdmin  && <AdminPanel t={t} allUsers={allUsers} onClose={()=>setShowAdmin(false)} onRefresh={async()=>{ const {data}=await supa.from("profiles").select("*").order("created_at"); setAllUsers(data||[]); }} />}
+      </div>
+    );
+  }
 
-      const toggleRole = async (user) => {
-        setUpdating(user.id);
-        const newRole = user.role === "admin" ? "member" : "admin";
-        await supa.from("profiles").update({ role: newRole }).eq("id", user.id);
-        await onRefresh();
-        setUpdating(null);
-      };
-
-      return (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 50, display: "flex", alignItems: "flex-end" }} onClick={onClose}>
-          <div onClick={e=>e.stopPropagation()} style={{ background: "var(--color-bg)", width: "100%", borderRadius: "16px 16px 0 0", padding: "20px 16px 30px", maxHeight: "70vh", overflowY: "auto", maxWidth: 680, margin: "0 auto" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <span style={{ fontWeight: 600, fontSize: 16 }}>👥 {t.adminPanel}</span>
-              <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--color-text2)" }}>✕</button>
-            </div>
-            {allUsers.map(u => (
-              <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "0.5px solid var(--color-border2)" }}>
-                <div style={{ width: 36, height: 36, borderRadius: "50%", background: u.role==="admin"?"#1D9E75":"#E6F1FB", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: u.role==="admin"?"#fff":"#185FA5", fontWeight: 600 }}>
-                  {(u.username||"?")[0].toUpperCase()}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 500 }}>{u.username}</div>
-                  <div style={{ fontSize: 11, color: "var(--color-text2)" }}>{u.role}</div>
-                </div>
-                <button onClick={() => toggleRole(u)} disabled={updating===u.id} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 8, border: "0.5px solid var(--color-border)", background: u.role==="admin"?"#FFF0F0":"#E1F5EE", color: u.role==="admin"?"#D85A30":"#0F6E56", cursor: "pointer" }}>
-                  {updating===u.id ? "..." : u.role==="admin" ? "→ Member" : "→ Admin"}
-                </button>
+  // ── Admin Panel ───────────────────────────────────────────────
+  function AdminPanel({ t, allUsers, onClose, onRefresh }) {
+    const [updating, setUpdating] = useState(null);
+    const toggleRole = async (user) => {
+      setUpdating(user.id);
+      await supa.from("profiles").update({ role: user.role==="admin"?"member":"admin" }).eq("id", user.id);
+      await onRefresh(); setUpdating(null);
+    };
+    return (
+      <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 50, display: "flex", alignItems: "flex-end" }} onClick={onClose}>
+        <div onClick={e=>e.stopPropagation()} style={{ background: "#fff", width: "100%", borderRadius: "16px 16px 0 0", padding: "20px 16px 30px", maxHeight: "70vh", overflowY: "auto", maxWidth: 680, margin: "0 auto" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <span style={{ fontWeight: 600, fontSize: 16 }}>👥 {t.adminPanel}</span>
+            <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#6e6e73" }}>✕</button>
+          </div>
+          {allUsers.map(u => (
+            <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "0.5px solid #e5e5ea" }}>
+              <div style={{ width: 36, height: 36, borderRadius: "50%", background: u.role==="admin"?"#1D9E75":"#E6F1FB", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: u.role==="admin"?"#fff":"#185FA5", fontWeight: 600 }}>
+                {(u.username||"?")[0].toUpperCase()}
               </div>
-            ))}
-          </div>
-        </div>
-      );
-    }
-
-    // ── Dashboard ─────────────────────────────────────────────────
-    function Dashboard({ plants, t, lang, onSelect, onLog, isAdmin, allUsers }) {
-      const attention = plants.filter(p => daysUntil(p.lastWatered,p.waterFreqDays)<1 || daysUntil(p.lastFertilized,p.fertFreqDays)<1);
-      const getUserName = (userId) => allUsers.find(u => u.id === userId)?.username || "";
-
-      return (
-        <div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 14 }}>
-            {[
-              { label: t.myPlants,   val: plants.length,                                                                color: "#1D9E75" },
-              { label: t.needsWater, val: plants.filter(p=>daysUntil(p.lastWatered,p.waterFreqDays)<1).length,          color: "#E24B4A" },
-              { label: t.needsFert,  val: plants.filter(p=>daysUntil(p.lastFertilized,p.fertFreqDays)<1).length,        color: "#EF9F27" },
-            ].map(s => (
-              <div key={s.label} style={{ background: "var(--color-bg)", borderRadius: 12, padding: "12px 10px", border: "0.5px solid var(--color-border2)", textAlign: "center" }}>
-                <div style={{ fontSize: 10, color: "var(--color-text2)", marginBottom: 4 }}>{s.label}</div>
-                <div style={{ fontSize: 28, fontWeight: 700, color: s.color }}>{s.val}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 500 }}>{u.username}</div>
+                <div style={{ fontSize: 11, color: "#6e6e73" }}>{u.role}</div>
               </div>
-            ))}
-          </div>
-
-          {attention.length > 0 && (
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text2)", marginBottom: 8 }}>{t.overdueTitle}</div>
-              {attention.map(p => {
-                const st=statusOf(p,t), wD=daysUntil(p.lastWatered,p.waterFreqDays), fD=daysUntil(p.lastFertilized,p.fertFreqDays);
-                return (
-                  <div key={p.id} style={{ background: "var(--color-bg)", border: "0.5px solid var(--color-border2)", borderLeft: `3px solid ${st.color}`, borderRadius: 10, padding: "10px 12px", marginBottom: 8, display: "flex", alignItems: "center", gap: 10 }}>
-                    <div onClick={()=>onSelect(p.id)} style={{ cursor: "pointer", flexShrink: 0 }}>
-                      {p.photo ? <img src={`data:${p.photoType};base64,${p.photo}`} style={{ width: 44, height: 44, borderRadius: 8, objectFit: "cover" }} /> : <div style={{ width: 44, height: 44, borderRadius: 8, background: "#E1F5EE", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>🌱</div>}
-                    </div>
-                    <div onClick={()=>onSelect(p.id)} style={{ flex: 1, cursor: "pointer", minWidth: 0 }}>
-                      <div style={{ fontWeight: 500, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
-                      <div style={{ fontSize: 11, color: st.color }}>{st.label}</div>
-                      {isAdmin && p._userId && <div style={{ fontSize: 10, color: "var(--color-text2)" }}>👤 {getUserName(p._userId)}</div>}
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 5, flexShrink: 0 }}>
-                      {wD<1 && <button onClick={()=>onLog(p.id,"water")} style={{ fontSize: 11, padding: "5px 8px", borderRadius: 6, border: "0.5px solid #85B7EB", background: "#E6F1FB", color: "#185FA5", cursor: "pointer" }}>💧</button>}
-                      {fD<1 && <button onClick={()=>onLog(p.id,"fert")}  style={{ fontSize: 11, padding: "5px 8px", borderRadius: 6, border: "0.5px solid #FAC775", background: "#FAEEDA", color: "#854F0B", cursor: "pointer" }}>🌿</button>}
-                    </div>
-                  </div>
-                );
-              })}
+              <button onClick={()=>toggleRole(u)} disabled={updating===u.id} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 8, border: "0.5px solid #d1d1d6", background: u.role==="admin"?"#FFF0F0":"#E1F5EE", color: u.role==="admin"?"#D85A30":"#0F6E56", cursor: "pointer" }}>
+                {updating===u.id?"...":u.role==="admin"?"→ Member":"→ Admin"}
+              </button>
             </div>
-          )}
+          ))}
+        </div>
+      </div>
+    );
+  }
 
-          {attention.length===0 && plants.length>0 && (
-            <div style={{ background: "#E1F5EE", borderRadius: 10, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#0F6E56", display: "flex", gap: 8 }}>✓ {t.allGood}</div>
-          )}
-          {plants.length===0 && <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--color-text2)", fontSize: 14 }}>{t.noPlants}</div>}
+  // ── Dashboard ─────────────────────────────────────────────────
+  function Dashboard({ plants, t, lang, onSelect, onLog, isAdmin, allUsers }) {
+    const attention = plants.filter(p => daysUntil(p.lastWatered,p.waterFreqDays)<1 || daysUntil(p.lastFertilized,p.fertFreqDays)<1);
+    const uname = uid => allUsers.find(u=>u.id===uid)?.username||"";
+    return (
+      <div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 14 }}>
+          {[
+            { label:t.myPlants,   val:plants.length, color:"#1D9E75" },
+            { label:t.needsWater, val:plants.filter(p=>daysUntil(p.lastWatered,p.waterFreqDays)<1).length, color:"#E24B4A" },
+            { label:t.needsFert,  val:plants.filter(p=>daysUntil(p.lastFertilized,p.fertFreqDays)<1).length, color:"#EF9F27" },
+          ].map(s=>(
+            <div key={s.label} style={{ background:"#fff", borderRadius:12, padding:"12px 10px", border:"0.5px solid #e5e5ea", textAlign:"center" }}>
+              <div style={{ fontSize:10, color:"#6e6e73", marginBottom:4 }}>{s.label}</div>
+              <div style={{ fontSize:28, fontWeight:700, color:s.color }}>{s.val}</div>
+            </div>
+          ))}
+        </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(150px,1fr))", gap: 10 }}>
-            {plants.map(p => {
-              const st=statusOf(p,t);
+        {attention.length>0 && (
+          <div style={{ marginBottom:14 }}>
+            <div style={{ fontSize:12, fontWeight:500, color:"#6e6e73", marginBottom:8 }}>{t.overdueTitle}</div>
+            {attention.map(p=>{
+              const st=statusOf(p,t),wD=daysUntil(p.lastWatered,p.waterFreqDays),fD=daysUntil(p.lastFertilized,p.fertFreqDays);
               return (
-                <div key={p.id} onClick={()=>onSelect(p.id)} style={{ background: "var(--color-bg)", border: "0.5px solid var(--color-border2)", borderRadius: 12, overflow: "hidden", cursor: "pointer", active: { opacity: 0.8 } }}>
-                  {p.photo ? <img src={`data:${p.photoType};base64,${p.photo}`} style={{ width: "100%", height: 100, objectFit: "cover" }} /> : <div style={{ height: 100, background: "#E1F5EE", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36 }}>🌱</div>}
-                  <div style={{ padding: "8px 10px" }}>
-                    <div style={{ fontWeight: 500, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
-                    <div style={{ fontSize: 11, color: st.color, marginTop: 2 }}>{st.label}</div>
-                    {isAdmin && p._userId && <div style={{ fontSize: 10, color: "var(--color-text2)", marginTop: 2 }}>👤 {getUserName(p._userId)}</div>}
+                <div key={p.id} style={{ background:"#fff", border:"0.5px solid #e5e5ea", borderLeft:`3px solid ${st.color}`, borderRadius:10, padding:"10px 12px", marginBottom:8, display:"flex", alignItems:"center", gap:10 }}>
+                  <div onClick={()=>onSelect(p.id)} style={{ cursor:"pointer", flexShrink:0 }}>
+                    {p.photo?<img src={`data:${p.photoType};base64,${p.photo}`} style={{ width:44,height:44,borderRadius:8,objectFit:"cover" }}/>:<div style={{ width:44,height:44,borderRadius:8,background:"#E1F5EE",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20 }}>🌱</div>}
+                  </div>
+                  <div onClick={()=>onSelect(p.id)} style={{ flex:1, cursor:"pointer", minWidth:0 }}>
+                    <div style={{ fontWeight:500,fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{p.name}</div>
+                    <div style={{ fontSize:11,color:st.color }}>{st.label}</div>
+                    {isAdmin&&p._userId&&<div style={{ fontSize:10,color:"#6e6e73" }}>👤 {uname(p._userId)}</div>}
+                  </div>
+                  <div style={{ display:"flex",flexDirection:"column",gap:5,flexShrink:0 }}>
+                    {wD<1&&<button onClick={()=>onLog(p.id,"water")} style={{ fontSize:11,padding:"5px 8px",borderRadius:6,border:"0.5px solid #85B7EB",background:"#E6F1FB",color:"#185FA5",cursor:"pointer" }}>💧</button>}
+                    {fD<1&&<button onClick={()=>onLog(p.id,"fert")}  style={{ fontSize:11,padding:"5px 8px",borderRadius:6,border:"0.5px solid #FAC775",background:"#FAEEDA",color:"#854F0B",cursor:"pointer" }}>🌿</button>}
                   </div>
                 </div>
               );
             })}
           </div>
-        </div>
-      );
-    }
+        )}
 
-    // ── Plant List ────────────────────────────────────────────────
-    function PlantList({ plants, t, lang, onSelect, isAdmin, allUsers }) {
-      const getUserName = (userId) => allUsers.find(u => u.id === userId)?.username || "";
-      return (
-        <div>
-          {plants.length===0 && <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--color-text2)", fontSize: 14 }}>{t.noPlants}</div>}
-          {plants.map(p => {
-            const st=statusOf(p,t), wD=daysUntil(p.lastWatered,p.waterFreqDays), fD=daysUntil(p.lastFertilized,p.fertFreqDays);
+        {attention.length===0&&plants.length>0&&<div style={{ background:"#E1F5EE",borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:13,color:"#0F6E56" }}>✓ {t.allGood}</div>}
+        {plants.length===0&&<div style={{ textAlign:"center",padding:"40px 20px",color:"#6e6e73",fontSize:14 }}>{t.noPlants}</div>}
+
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))", gap:10 }}>
+          {plants.map(p=>{
+            const st=statusOf(p,t);
             return (
-              <div key={p.id} onClick={()=>onSelect(p.id)} style={{ background: "var(--color-bg)", border: "0.5px solid var(--color-border2)", borderRadius: 12, padding: "12px 14px", marginBottom: 10, cursor: "pointer", display: "flex", gap: 12, alignItems: "center" }}>
-                {p.photo ? <img src={`data:${p.photoType};base64,${p.photo}`} style={{ width: 54, height: 54, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} /> : <div style={{ width: 54, height: 54, borderRadius: 10, background: "#E1F5EE", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 }}>🌱</div>}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 500, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
-                  {p.species && <div style={{ fontSize: 12, color: "var(--color-text2)" }}>{p.species}</div>}
-                  <div style={{ fontSize: 11, color: st.color, marginTop: 2 }}>{st.label}</div>
-                  {isAdmin && p._userId && <div style={{ fontSize: 10, color: "var(--color-text2)" }}>👤 {getUserName(p._userId)}</div>}
-                </div>
-                <div style={{ fontSize: 11, color: "var(--color-text2)", textAlign: "right", flexShrink: 0 }}>
-                  <div>💧 {wD<0?t.overdue:wD===0?t.due:`${t.inDays} ${wD}${t.days}`}</div>
-                  <div style={{ marginTop: 3 }}>🌿 {fD<0?t.overdue:fD===0?t.due:`${t.inDays} ${fD}${t.days}`}</div>
+              <div key={p.id} onClick={()=>onSelect(p.id)} style={{ background:"#fff",border:"0.5px solid #e5e5ea",borderRadius:12,overflow:"hidden",cursor:"pointer" }}>
+                {p.photo?<img src={`data:${p.photoType};base64,${p.photo}`} style={{ width:"100%",height:100,objectFit:"cover" }}/>:<div style={{ height:100,background:"#E1F5EE",display:"flex",alignItems:"center",justifyContent:"center",fontSize:36 }}>🌱</div>}
+                <div style={{ padding:"8px 10px" }}>
+                  <div style={{ fontWeight:500,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{p.name}</div>
+                  <div style={{ fontSize:11,color:st.color,marginTop:2 }}>{st.label}</div>
+                  {isAdmin&&p._userId&&<div style={{ fontSize:10,color:"#6e6e73",marginTop:2 }}>👤 {uname(p._userId)}</div>}
                 </div>
               </div>
             );
           })}
         </div>
-      );
-    }
+      </div>
+    );
+  }
 
-    // ── Plant Profile ─────────────────────────────────────────────
-    function PlantProfile({ plant, t, lang, onUpdate, onLog, onDelete }) {
-      const [tab,    setTab]    = useState("care");
-      const [editing,setEditing]= useState(false);
-      const [form,   setForm]   = useState({ name:plant.name, species:plant.species||"", location:plant.location||"", waterFreqDays:plant.waterFreqDays, fertFreqDays:plant.fertFreqDays });
-      const [jNote,  setJNote]  = useState("");
-      const [jPhoto, setJPhoto] = useState(null);
-      const [jPT,    setJPT]    = useState(null);
-      const jRef = useRef(), mainRef = useRef();
-
-      useEffect(() => {
-        setForm({ name:plant.name, species:plant.species||"", location:plant.location||"", waterFreqDays:plant.waterFreqDays, fertFreqDays:plant.fertFreqDays });
-      }, [plant.id]);
-
-      const handleMain   = async e => { const f=e.target.files[0]; if(!f) return; onUpdate({...plant, photo:await toBase64(f), photoType:f.type}); };
-      const handleJPhoto = async e => { const f=e.target.files[0]; if(!f) return; setJPhoto(await toBase64(f)); setJPT(f.type); };
-      const addJournal   = () => {
-        if (!jNote && !jPhoto) return;
-        onUpdate({...plant, journal:[...(plant.journal||[]), { id:Date.now(), ts:Date.now(), note:jNote, photo:jPhoto, photoType:jPT }]});
-        setJNote(""); setJPhoto(null); setJPT(null);
-      };
-      const saveEdit = () => { onUpdate({...plant, ...form, waterFreqDays:Number(form.waterFreqDays), fertFreqDays:Number(form.fertFreqDays)}); setEditing(false); };
-
-      const wD=daysUntil(plant.lastWatered,plant.waterFreqDays), fD=daysUntil(plant.lastFertilized,plant.fertFreqDays), st=statusOf(plant,t);
-
-      return (
-        <div>
-          {/* Hero */}
-          <div style={{ background: "var(--color-bg)", border: "0.5px solid var(--color-border2)", borderRadius: 14, overflow: "hidden", marginBottom: 12 }}>
-            <div style={{ position: "relative" }}>
-              {plant.photo ? <img src={`data:${plant.photoType};base64,${plant.photo}`} style={{ width: "100%", height: 200, objectFit: "cover" }} /> : <div style={{ height: 200, background: "#E1F5EE", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 64 }}>🌱</div>}
-              <button onClick={()=>mainRef.current.click()} style={{ position: "absolute", bottom: 10, right: 10, fontSize: 12, padding: "6px 12px", borderRadius: 8, border: "none", background: "rgba(0,0,0,0.5)", color: "#fff", cursor: "pointer" }}>📷 {t.mainPhoto}</button>
-              <input ref={mainRef} type="file" accept="image/*" capture="environment" onChange={handleMain} style={{ display: "none" }} />
+  // ── Plant List ────────────────────────────────────────────────
+  function PlantList({ plants, t, lang, onSelect, isAdmin, allUsers }) {
+    const uname = uid => allUsers.find(u=>u.id===uid)?.username||"";
+    return (
+      <div>
+        {plants.length===0&&<div style={{ textAlign:"center",padding:"40px 20px",color:"#6e6e73",fontSize:14 }}>{t.noPlants}</div>}
+        {plants.map(p=>{
+          const st=statusOf(p,t),wD=daysUntil(p.lastWatered,p.waterFreqDays),fD=daysUntil(p.lastFertilized,p.fertFreqDays);
+          return (
+            <div key={p.id} onClick={()=>onSelect(p.id)} style={{ background:"#fff",border:"0.5px solid #e5e5ea",borderRadius:12,padding:"12px 14px",marginBottom:10,cursor:"pointer",display:"flex",gap:12,alignItems:"center" }}>
+              {p.photo?<img src={`data:${p.photoType};base64,${p.photo}`} style={{ width:54,height:54,borderRadius:10,objectFit:"cover",flexShrink:0 }}/>:<div style={{ width:54,height:54,borderRadius:10,background:"#E1F5EE",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,flexShrink:0 }}>🌱</div>}
+              <div style={{ flex:1,minWidth:0 }}>
+                <div style={{ fontWeight:500,fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{p.name}</div>
+                {p.species&&<div style={{ fontSize:12,color:"#6e6e73" }}>{p.species}</div>}
+                <div style={{ fontSize:11,color:st.color,marginTop:2 }}>{st.label}</div>
+                {isAdmin&&p._userId&&<div style={{ fontSize:10,color:"#6e6e73" }}>👤 {uname(p._userId)}</div>}
+              </div>
+              <div style={{ fontSize:11,color:"#6e6e73",textAlign:"right",flexShrink:0 }}>
+                <div>💧 {wD<0?t.overdue:wD===0?t.due:`${t.inDays} ${wD}${t.days}`}</div>
+                <div style={{ marginTop:3 }}>🌿 {fD<0?t.overdue:fD===0?t.due:`${t.inDays} ${fD}${t.days}`}</div>
+              </div>
             </div>
-            <div style={{ padding: "14px" }}>
-              {editing ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {[["name",t.plantName],["species",t.species],["location",t.location]].map(([k,lbl])=>(
+          );
+        })}
+      </div>
+    );
+  }
+
+  // ── Plant Profile ─────────────────────────────────────────────
+  function PlantProfile({ plant, t, lang, onUpdate, onLog, onDelete }) {
+    const [tab,    setTab]    = useState("care");
+    const [editing,setEditing]= useState(false);
+    const [form,   setForm]   = useState({ name:plant.name, species:plant.species||"", location:plant.location||"", waterFreqDays:plant.waterFreqDays, fertFreqDays:plant.fertFreqDays });
+    const [jNote,  setJNote]  = useState("");
+    const [jPhoto, setJPhoto] = useState(null);
+    const [jPT,    setJPT]    = useState(null);
+
+    useEffect(()=>{
+      setForm({ name:plant.name, species:plant.species||"", location:plant.location||"", waterFreqDays:plant.waterFreqDays, fertFreqDays:plant.fertFreqDays });
+    },[plant.id]);
+
+    const addJournal = () => {
+      if (!jNote&&!jPhoto) return;
+      onUpdate({...plant, journal:[...(plant.journal||[]),{ id:Date.now(),ts:Date.now(),note:jNote,photo:jPhoto,photoType:jPT }]});
+      setJNote(""); setJPhoto(null); setJPT(null);
+    };
+    const saveEdit = () => { onUpdate({...plant,...form,waterFreqDays:Number(form.waterFreqDays),fertFreqDays:Number(form.fertFreqDays)}); setEditing(false); };
+    const wD=daysUntil(plant.lastWatered,plant.waterFreqDays),fD=daysUntil(plant.lastFertilized,plant.fertFreqDays),st=statusOf(plant,t);
+
+    return (
+      <div>
+        {/* Hero */}
+        <div style={{ background:"#fff",border:"0.5px solid #e5e5ea",borderRadius:14,overflow:"hidden",marginBottom:12 }}>
+          <div style={{ position:"relative" }}>
+            {plant.photo?<img src={`data:${plant.photoType};base64,${plant.photo}`} style={{ width:"100%",height:200,objectFit:"cover" }}/>:<div style={{ height:200,background:"#E1F5EE",display:"flex",alignItems:"center",justifyContent:"center",fontSize:64 }}>🌱</div>}
+            {/* iOS-safe photo change button */}
+            <div style={{ position:"absolute",bottom:10,right:10 }}>
+              <PhotoButton
+                onPhoto={(b64,type)=>onUpdate({...plant,photo:b64,photoType:type})}
+                style={{ padding:"6px 12px",borderRadius:8,background:"rgba(0,0,0,0.5)",color:"#fff",fontSize:12,fontWeight:500 }}
+              >{t.changePhoto}</PhotoButton>
+            </div>
+          </div>
+
+          <div style={{ padding:"14px" }}>
+            {editing ? (
+              <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+                {[["name",t.plantName],["species",t.species],["location",t.location]].map(([k,lbl])=>(
+                  <div key={k}>
+                    <div style={{ fontSize:12,color:"#6e6e73",marginBottom:4 }}>{lbl}</div>
+                    <input value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"0.5px solid #d1d1d6",background:"#f2f2f7",color:"#1c1c1e",fontSize:15 }} />
+                  </div>
+                ))}
+                <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
+                  {[["waterFreqDays",t.waterFreq],["fertFreqDays",t.fertFreq]].map(([k,lbl])=>(
                     <div key={k}>
-                      <div style={{ fontSize: 12, color: "var(--color-text2)", marginBottom: 4 }}>{lbl}</div>
-                      <input value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})} style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "0.5px solid var(--color-border)", background: "var(--color-bg2)", color: "var(--color-text)", fontSize: 15 }} />
+                      <div style={{ fontSize:12,color:"#6e6e73",marginBottom:4 }}>{lbl}</div>
+                      <input type="number" value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"0.5px solid #d1d1d6",background:"#f2f2f7",color:"#1c1c1e",fontSize:15 }} />
                     </div>
                   ))}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                    {[["waterFreqDays",t.waterFreq],["fertFreqDays",t.fertFreq]].map(([k,lbl])=>(
-                      <div key={k}>
-                        <div style={{ fontSize: 12, color: "var(--color-text2)", marginBottom: 4 }}>{lbl}</div>
-                        <input type="number" value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})} style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "0.5px solid var(--color-border)", background: "var(--color-bg2)", color: "var(--color-text)", fontSize: 15 }} />
-                      </div>
-                    ))}
+                </div>
+                <div style={{ display:"flex",gap:8 }}>
+                  <button onClick={saveEdit} style={{ flex:1,padding:"10px",borderRadius:10,border:"none",background:"#1D9E75",color:"#fff",cursor:"pointer",fontSize:14,fontWeight:500 }}>{t.saveChanges}</button>
+                  <button onClick={()=>setEditing(false)} style={{ flex:1,padding:"10px",borderRadius:10,border:"0.5px solid #d1d1d6",background:"none",cursor:"pointer",fontSize:14 }}>{t.cancel}</button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12 }}>
+                  <div>
+                    <div style={{ fontWeight:700,fontSize:20 }}>{plant.name}</div>
+                    {plant.species&&<div style={{ fontSize:13,color:"#6e6e73",marginTop:2 }}>{plant.species}</div>}
+                    {plant.location&&<div style={{ fontSize:12,color:"#6e6e73",marginTop:2 }}>📍 {plant.location}</div>}
                   </div>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={saveEdit} style={{ flex: 1, padding: "10px", borderRadius: 10, border: "none", background: "#1D9E75", color: "#fff", cursor: "pointer", fontSize: 14, fontWeight: 500 }}>{t.saveChanges}</button>
-                    <button onClick={()=>setEditing(false)} style={{ flex: 1, padding: "10px", borderRadius: 10, border: "0.5px solid var(--color-border)", background: "none", cursor: "pointer", fontSize: 14 }}>{t.cancel}</button>
+                  <button onClick={()=>setEditing(true)} style={{ fontSize:12,padding:"6px 12px",borderRadius:8,border:"0.5px solid #d1d1d6",background:"none",cursor:"pointer",color:"#6e6e73",flexShrink:0 }}>{t.editDetails}</button>
+                </div>
+                <div style={{ display:"flex",gap:8,marginBottom:12 }}>
+                  <div style={{ flex:1,background:"#E6F1FB",borderRadius:10,padding:"10px 12px" }}>
+                    <div style={{ fontSize:11,color:"#185FA5",marginBottom:3 }}>💧 {t.water}</div>
+                    <div style={{ fontSize:14,fontWeight:600,color:wD<0?"#E24B4A":"#0C447C" }}>{wD<0?t.overdue:wD===0?t.due:`${t.inDays} ${wD}${t.days}`}</div>
+                    <div style={{ fontSize:11,color:"#378ADD",marginTop:2 }}>{fmtDate(plant.lastWatered,lang)}</div>
+                  </div>
+                  <div style={{ flex:1,background:"#FAEEDA",borderRadius:10,padding:"10px 12px" }}>
+                    <div style={{ fontSize:11,color:"#854F0B",marginBottom:3 }}>🌿 {t.fertilize}</div>
+                    <div style={{ fontSize:14,fontWeight:600,color:fD<0?"#E24B4A":"#633806" }}>{fD<0?t.overdue:fD===0?t.due:`${t.inDays} ${fD}${t.days}`}</div>
+                    <div style={{ fontSize:11,color:"#BA7517",marginTop:2 }}>{fmtDate(plant.lastFertilized,lang)}</div>
                   </div>
                 </div>
-              ) : (
-                <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 20 }}>{plant.name}</div>
-                      {plant.species  && <div style={{ fontSize: 13, color: "var(--color-text2)", marginTop: 2 }}>{plant.species}</div>}
-                      {plant.location && <div style={{ fontSize: 12, color: "var(--color-text2)", marginTop: 2 }}>📍 {plant.location}</div>}
-                    </div>
-                    <button onClick={()=>setEditing(true)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 8, border: "0.5px solid var(--color-border)", background: "none", cursor: "pointer", color: "var(--color-text2)", flexShrink: 0 }}>{t.editDetails}</button>
-                  </div>
-                  <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                    <div style={{ flex: 1, background: "#E6F1FB", borderRadius: 10, padding: "10px 12px" }}>
-                      <div style={{ fontSize: 11, color: "#185FA5", marginBottom: 3 }}>💧 {t.water}</div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: wD<0?"#E24B4A":"#0C447C" }}>{wD<0?t.overdue:wD===0?t.due:`${t.inDays} ${wD}${t.days}`}</div>
-                      <div style={{ fontSize: 11, color: "#378ADD", marginTop: 2 }}>{fmtDate(plant.lastWatered,lang)}</div>
-                    </div>
-                    <div style={{ flex: 1, background: "#FAEEDA", borderRadius: 10, padding: "10px 12px" }}>
-                      <div style={{ fontSize: 11, color: "#854F0B", marginBottom: 3 }}>🌿 {t.fertilize}</div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: fD<0?"#E24B4A":"#633806" }}>{fD<0?t.overdue:fD===0?t.due:`${t.inDays} ${fD}${t.days}`}</div>
-                      <div style={{ fontSize: 11, color: "#BA7517", marginTop: 2 }}>{fmtDate(plant.lastFertilized,lang)}</div>
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={()=>onLog(plant.id,"water")} style={{ flex: 1, padding: "11px", borderRadius: 10, border: "0.5px solid #85B7EB", background: "#E6F1FB", color: "#185FA5", cursor: "pointer", fontSize: 14, fontWeight: 500 }}>💧 {t.water}</button>
-                    <button onClick={()=>onLog(plant.id,"fert")}  style={{ flex: 1, padding: "11px", borderRadius: 10, border: "0.5px solid #FAC775", background: "#FAEEDA", color: "#854F0B", cursor: "pointer", fontSize: 14, fontWeight: 500 }}>🌿 {t.fertilize}</button>
-                  </div>
+                <div style={{ display:"flex",gap:8 }}>
+                  <button onClick={()=>onLog(plant.id,"water")} style={{ flex:1,padding:"11px",borderRadius:10,border:"0.5px solid #85B7EB",background:"#E6F1FB",color:"#185FA5",cursor:"pointer",fontSize:14,fontWeight:500 }}>💧 {t.water}</button>
+                  <button onClick={()=>onLog(plant.id,"fert")}  style={{ flex:1,padding:"11px",borderRadius:10,border:"0.5px solid #FAC775",background:"#FAEEDA",color:"#854F0B",cursor:"pointer",fontSize:14,fontWeight:500 }}>🌿 {t.fertilize}</button>
                 </div>
-              )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display:"flex",background:"#fff",border:"0.5px solid #e5e5ea",borderRadius:"12px 12px 0 0",overflow:"hidden" }}>
+          {["care","journal","log"].map(tb=>(
+            <button key={tb} onClick={()=>setTab(tb)} style={{ flex:1,padding:"11px 0",fontSize:13,border:"none",background:"none",cursor:"pointer",borderBottom:tab===tb?"2px solid #1D9E75":"2px solid transparent",color:tab===tb?"#1D9E75":"#6e6e73",fontWeight:tab===tb?500:400 }}>
+              {tb==="care"?t.careDetails:tb==="journal"?t.growthJournal:t.careLog}
+            </button>
+          ))}
+        </div>
+
+        {tab==="care" && (
+          <div style={{ background:"#fff",border:"0.5px solid #e5e5ea",borderTop:"none",borderRadius:"0 0 12px 12px",padding:14 }}>
+            {plant.aiNotes ? (
+              <>
+                {plant.aiNotes.sunlight      && <Row label={t.sunlight}  val={plant.aiNotes.sunlight} />}
+                {plant.aiNotes.soil          && <Row label={t.soil}      val={plant.aiNotes.soil} />}
+                {plant.aiNotes.waterFreqDays && <Row label={t.waterFreq} val={`${lang==="zh"?"每":"Every "} ${plant.aiNotes.waterFreqDays} ${lang==="zh"?"天":"days"}`} />}
+                {plant.aiNotes.fertFreqDays  && <Row label={t.fertFreq}  val={`${lang==="zh"?"每":"Every "} ${plant.aiNotes.fertFreqDays} ${lang==="zh"?"天":"days"}`} />}
+                {plant.aiNotes.tips          && <Row label={t.tips}      val={plant.aiNotes.tips} />}
+                {plant.aiNotes.raw           && <div style={{ fontSize:13,color:"#6e6e73",marginTop:10,lineHeight:1.65 }}>{plant.aiNotes.raw}</div>}
+              </>
+            ) : (
+              <div style={{ fontSize:13,color:"#6e6e73" }}>{t.aiNotes} — {lang==="zh"?"添加植物时AI会自动识别":"AI notes appear after photo identification"}</div>
+            )}
+            <button onClick={()=>{if(window.confirm(t.deletePlant+"?"))onDelete(plant.id);}} style={{ marginTop:18,width:"100%",padding:"11px",borderRadius:10,border:"0.5px solid #F0997B",background:"none",color:"#D85A30",cursor:"pointer",fontSize:14 }}>{t.deletePlant}</button>
+          </div>
+        )}
+
+        {tab==="journal" && (
+          <div style={{ background:"#fff",border:"0.5px solid #e5e5ea",borderTop:"none",borderRadius:"0 0 12px 12px",padding:14 }}>
+            <textarea value={jNote} onChange={e=>setJNote(e.target.value)} placeholder={t.addNote} rows={2} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"0.5px solid #d1d1d6",background:"#f2f2f7",fontSize:14,resize:"none",boxSizing:"border-box",color:"#1c1c1e" }} />
+            <div style={{ display:"flex",gap:8,marginTop:8,marginBottom:14 }}>
+              {/* iOS-safe journal photo button */}
+              <PhotoButton
+                onPhoto={(b64,type)=>{setJPhoto(b64);setJPT(type);}}
+                style={{ flex:1,padding:"10px",borderRadius:8,border:"0.5px solid #d1d1d6",background:"#f2f2f7",fontSize:13,color:"#6e6e73" }}
+              >{t.addJournalPhoto}</PhotoButton>
+              <button onClick={addJournal} style={{ flex:1,padding:"10px",borderRadius:8,border:"none",background:"#1D9E75",color:"#fff",cursor:"pointer",fontSize:13,fontWeight:500 }}>{t.addEntry}</button>
             </div>
+            {jPhoto&&<img src={`data:${jPT};base64,${jPhoto}`} style={{ width:"100%",maxHeight:140,objectFit:"cover",borderRadius:8,marginBottom:14 }}/>}
+            {(plant.journal||[]).length===0&&<div style={{ textAlign:"center",color:"#6e6e73",fontSize:13,padding:"16px 0" }}>{t.noJournal}</div>}
+            {(plant.journal||[]).slice().reverse().map(e=>(
+              <div key={e.id} style={{ borderTop:"0.5px solid #e5e5ea",paddingTop:12,marginTop:12 }}>
+                <div style={{ fontSize:11,color:"#6e6e73",marginBottom:6,display:"flex",gap:8,alignItems:"center",flexWrap:"wrap" }}>
+                  <span>{fmtFull(e.ts,lang)}</span>
+                  {e.source==="care-log"  && <span style={{ background:"#E1F5EE",color:"#0F6E56",borderRadius:4,padding:"2px 6px",fontSize:10 }}>{lang==="zh"?"养护记录":"Care Log"}</span>}
+                  {e.source==="ai-doctor" && <span style={{ background:"#EDE9FE",color:"#5B21B6",borderRadius:4,padding:"2px 6px",fontSize:10 }}>AI Doctor</span>}
+                </div>
+                {e.photo&&<img src={`data:${e.photoType};base64,${e.photo}`} style={{ width:"100%",maxHeight:180,objectFit:"cover",borderRadius:8,marginBottom:8 }}/>}
+                {e.note&&<div style={{ fontSize:13,lineHeight:1.6,whiteSpace:"pre-wrap" }}>{e.note}</div>}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {tab==="log" && (
+          <div style={{ background:"#fff",border:"0.5px solid #e5e5ea",borderTop:"none",borderRadius:"0 0 12px 12px",padding:14 }}>
+            {(plant.log||[]).length===0&&<div style={{ textAlign:"center",color:"#6e6e73",fontSize:13,padding:"16px 0" }}>{t.noLog}</div>}
+            {(plant.log||[]).slice().reverse().map((e,i)=>(
+              <div key={i} style={{ display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:"0.5px solid #e5e5ea" }}>
+                <span style={{ fontSize:18 }}>{e.type==="water"?"💧":"🌿"}</span>
+                <span style={{ fontSize:13 }}>{e.type==="water"?t.watered:t.fertilized}</span>
+                <span style={{ marginLeft:"auto",fontSize:12,color:"#6e6e73" }}>{fmtFull(e.ts,lang)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function Row({ label, val }) {
+    return (
+      <div style={{ display:"flex",gap:10,marginBottom:10,fontSize:13 }}>
+        <div style={{ color:"#6e6e73",minWidth:90,flexShrink:0 }}>{label}</div>
+        <div style={{ color:"#1c1c1e",flex:1,lineHeight:1.5 }}>{val}</div>
+      </div>
+    );
+  }
+
+  // ── Add Plant Modal ───────────────────────────────────────────
+  function AddPlantModal({ t, lang, onClose, onSave }) {
+    const [name,  setName]    = useState("");
+    const [spec,  setSpec]    = useState("");
+    const [loc,   setLoc]     = useState("");
+    const [wFreq, setWFreq]   = useState(3);
+    const [fFreq, setFFreq]   = useState(14);
+    const [photo, setPhoto]   = useState(null);
+    const [pType, setPType]   = useState(null);
+    const [ident, setIdent]   = useState(false);
+    const [aiNotes,setAiNotes]= useState(null);
+
+    const identify = async () => {
+      if (!photo) return; setIdent(true);
+      try {
+        const sys = lang==="zh"
+          ? `你是一位专业的植物识别助手。分析图片并以JSON格式返回：{"name":"植物名称","species":"学名/品种","sunlight":"光照需求","soil":"土壤要求","waterFreqDays":数字,"fertFreqDays":数字,"tips":"详细养护建议","raw":"植物简介"}。仅返回JSON。`
+          : `You are a plant identification expert. Return JSON only: {"name":"Common name","species":"Species","sunlight":"light needs","soil":"soil requirements","waterFreqDays":number,"fertFreqDays":number,"tips":"detailed care tips","raw":"plant description"}. No other text.`;
+        const txt = await callClaude([{ role:"user", content:[
+          { type:"image", source:{ type:"base64", media_type:pType, data:photo }},
+          { type:"text",  text: lang==="zh"?"请识别这株植物并提供详细养护信息":"Identify this plant and provide detailed care info" }
+        ]}], sys);
+        const p = JSON.parse(txt.replace(/```json|```/g,"").trim());
+        setName(p.name||""); setSpec(p.species||"");
+        if (p.waterFreqDays) setWFreq(p.waterFreqDays);
+        if (p.fertFreqDays)  setFFreq(p.fertFreqDays);
+        setAiNotes({ sunlight:p.sunlight, soil:p.soil, tips:p.tips, raw:p.raw, waterFreqDays:p.waterFreqDays, fertFreqDays:p.fertFreqDays });
+      } catch(e) { console.error(e); }
+      setIdent(false);
+    };
+
+    const save = () => {
+      if (!name.trim()) return;
+      onSave({ id:Date.now(), name:name.trim(), species:spec, location:loc, waterFreqDays:Number(wFreq), fertFreqDays:Number(fFreq), photo, photoType:pType, aiNotes, log:[], journal:[] });
+    };
+
+    return (
+      <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:50,display:"flex",alignItems:"flex-end" }} onClick={onClose}>
+        <div onClick={e=>e.stopPropagation()} style={{ background:"#fff",width:"100%",borderRadius:"20px 20px 0 0",padding:"22px 16px",paddingBottom:"max(30px,env(safe-area-inset-bottom))",maxHeight:"94vh",overflowY:"auto",maxWidth:680,margin:"0 auto" }}>
+          <div style={{ fontWeight:700,fontSize:18,marginBottom:18 }}>{lang==="zh"?"添加新植物":"Add New Plant"}</div>
+
+          {/* iOS-safe full-width photo picker */}
+          <div className="photo-btn-wrap photo-picker-hero" style={{ marginBottom:14 }}>
+            {photo
+              ? <img src={`data:${pType};base64,${photo}`} style={{ width:"100%",height:"100%",objectFit:"cover" }} />
+              : <span style={{ color:"#1D9E75",fontSize:15,pointerEvents:"none" }}>{t.addPhoto}</span>
+            }
+            <input type="file" accept="image/*" capture="environment" onChange={async e=>{ const f=e.target.files[0]; if(!f) return; setPhoto(await toBase64(f)); setPType(f.type); e.target.value=""; }} />
           </div>
 
-          {/* Tabs */}
-          <div style={{ display: "flex", background: "var(--color-bg)", border: "0.5px solid var(--color-border2)", borderRadius: "12px 12px 0 0", overflow: "hidden" }}>
-            {["care","journal","log"].map(tb=>(
-              <button key={tb} onClick={()=>setTab(tb)} style={{ flex: 1, padding: "11px 0", fontSize: 13, border: "none", background: "none", cursor: "pointer", borderBottom: tab===tb?"2px solid #1D9E75":"2px solid transparent", color: tab===tb?"#1D9E75":"var(--color-text2)", fontWeight: tab===tb?500:400 }}>
-                {tb==="care"?t.careDetails:tb==="journal"?t.growthJournal:t.careLog}
-              </button>
+          {photo && (
+            <button onClick={identify} disabled={ident} style={{ width:"100%",padding:"12px",borderRadius:12,border:"none",background:ident?"#9FE1CB":"#1D9E75",color:"#fff",cursor:ident?"default":"pointer",fontSize:14,fontWeight:500,marginBottom:14 }}>
+              {ident?`⏳ ${t.identifying}`:t.aiIdentify}
+            </button>
+          )}
+
+          {aiNotes && (
+            <div style={{ background:"#E1F5EE",borderRadius:12,padding:"14px",marginBottom:14,fontSize:13,color:"#0F6E56",lineHeight:1.7 }}>
+              <div style={{ fontWeight:600,marginBottom:8 }}>🤖 {lang==="zh"?"AI 识别结果":"AI Identification Result"}</div>
+              {aiNotes.sunlight      && <div>☀️ <b>{t.sunlight}:</b> {aiNotes.sunlight}</div>}
+              {aiNotes.soil          && <div>🪴 <b>{t.soil}:</b> {aiNotes.soil}</div>}
+              {aiNotes.waterFreqDays && <div>💧 <b>{lang==="zh"?"浇水频率":"Water every"}:</b> {aiNotes.waterFreqDays} {lang==="zh"?"天":"days"}</div>}
+              {aiNotes.fertFreqDays  && <div>🌿 <b>{lang==="zh"?"施肥频率":"Fertilize every"}:</b> {aiNotes.fertFreqDays} {lang==="zh"?"天":"days"}</div>}
+              {aiNotes.tips          && <div style={{ marginTop:6 }}>💡 {aiNotes.tips}</div>}
+              {aiNotes.raw           && <div style={{ marginTop:6,color:"#155E48" }}>{aiNotes.raw}</div>}
+            </div>
+          )}
+
+          {[[name,setName,t.plantName],[spec,setSpec,t.species],[loc,setLoc,t.location]].map(([val,setter,lbl])=>(
+            <div key={lbl} style={{ marginBottom:12 }}>
+              <div style={{ fontSize:12,color:"#6e6e73",marginBottom:4 }}>{lbl}</div>
+              <input value={val} onChange={e=>setter(e.target.value)} style={{ width:"100%",padding:"11px 14px",borderRadius:10,border:"0.5px solid #d1d1d6",background:"#f2f2f7",color:"#1c1c1e",fontSize:15,boxSizing:"border-box" }} />
+            </div>
+          ))}
+
+          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:20 }}>
+            {[[wFreq,setWFreq,t.waterFreq],[fFreq,setFFreq,t.fertFreq]].map(([val,setter,lbl])=>(
+              <div key={lbl}>
+                <div style={{ fontSize:12,color:"#6e6e73",marginBottom:4 }}>{lbl}</div>
+                <input type="number" min="1" value={val} onChange={e=>setter(e.target.value)} style={{ width:"100%",padding:"11px 14px",borderRadius:10,border:"0.5px solid #d1d1d6",background:"#f2f2f7",color:"#1c1c1e",fontSize:15,boxSizing:"border-box" }} />
+              </div>
             ))}
           </div>
 
-          {tab==="care" && (
-            <div style={{ background: "var(--color-bg)", border: "0.5px solid var(--color-border2)", borderTop: "none", borderRadius: "0 0 12px 12px", padding: 14 }}>
-              {plant.aiNotes ? (
-                <>
-                  {plant.aiNotes.sunlight      && <Row label={t.sunlight}  val={plant.aiNotes.sunlight} />}
-                  {plant.aiNotes.soil          && <Row label={t.soil}      val={plant.aiNotes.soil} />}
-                  {plant.aiNotes.waterFreqDays && <Row label={t.waterFreq} val={`${lang==="zh"?"每":"Every "} ${plant.aiNotes.waterFreqDays} ${lang==="zh"?"天":"days"}`} />}
-                  {plant.aiNotes.fertFreqDays  && <Row label={t.fertFreq}  val={`${lang==="zh"?"每":"Every "} ${plant.aiNotes.fertFreqDays} ${lang==="zh"?"天":"days"}`} />}
-                  {plant.aiNotes.tips          && <Row label={t.tips}      val={plant.aiNotes.tips} />}
-                  {plant.aiNotes.raw           && <div style={{ fontSize: 13, color: "var(--color-text2)", marginTop: 10, lineHeight: 1.65 }}>{plant.aiNotes.raw}</div>}
-                </>
-              ) : (
-                <div style={{ fontSize: 13, color: "var(--color-text2)" }}>{t.aiNotes} — {lang==="zh"?"添加植物时AI会自动识别":"AI notes appear after photo identification"}</div>
-              )}
-              <button onClick={()=>{ if(window.confirm(t.deletePlant+"?")) onDelete(plant.id); }} style={{ marginTop: 18, width: "100%", padding: "11px", borderRadius: 10, border: "0.5px solid #F0997B", background: "none", color: "#D85A30", cursor: "pointer", fontSize: 14 }}>{t.deletePlant}</button>
-            </div>
-          )}
-
-          {tab==="journal" && (
-            <div style={{ background: "var(--color-bg)", border: "0.5px solid var(--color-border2)", borderTop: "none", borderRadius: "0 0 12px 12px", padding: 14 }}>
-              <textarea value={jNote} onChange={e=>setJNote(e.target.value)} placeholder={t.addNote} rows={2} style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "0.5px solid var(--color-border)", background: "var(--color-bg2)", color: "var(--color-text)", fontSize: 14, resize: "none", boxSizing: "border-box" }} />
-              <div style={{ display: "flex", gap: 8, marginTop: 8, marginBottom: 14 }}>
-                <button onClick={()=>jRef.current.click()} style={{ flex: 1, padding: "10px", borderRadius: 8, border: "0.5px solid var(--color-border)", background: "var(--color-bg2)", cursor: "pointer", fontSize: 13, color: "var(--color-text2)" }}>📷 {t.addPhoto}</button>
-                <input ref={jRef} type="file" accept="image/*" capture="environment" onChange={handleJPhoto} style={{ display: "none" }} />
-                <button onClick={addJournal} style={{ flex: 1, padding: "10px", borderRadius: 8, border: "none", background: "#1D9E75", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 500 }}>{t.addEntry}</button>
-              </div>
-              {jPhoto && <img src={`data:${jPT};base64,${jPhoto}`} style={{ width: "100%", maxHeight: 140, objectFit: "cover", borderRadius: 8, marginBottom: 14 }} />}
-              {(plant.journal||[]).length===0 && <div style={{ textAlign: "center", color: "var(--color-text2)", fontSize: 13, padding: "16px 0" }}>{t.noJournal}</div>}
-              {(plant.journal||[]).slice().reverse().map(e=>(
-                <div key={e.id} style={{ borderTop: "0.5px solid var(--color-border2)", paddingTop: 12, marginTop: 12 }}>
-                  <div style={{ fontSize: 11, color: "var(--color-text2)", marginBottom: 6, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                    <span>{fmtFull(e.ts,lang)}</span>
-                    {e.source==="care-log"  && <span style={{ background: "#E1F5EE", color: "#0F6E56", borderRadius: 4, padding: "2px 6px", fontSize: 10 }}>{lang==="zh"?"养护记录":"Care Log"}</span>}
-                    {e.source==="ai-doctor" && <span style={{ background: "#EDE9FE", color: "#5B21B6", borderRadius: 4, padding: "2px 6px", fontSize: 10 }}>AI Doctor</span>}
-                  </div>
-                  {e.photo && <img src={`data:${e.photoType};base64,${e.photo}`} style={{ width: "100%", maxHeight: 180, objectFit: "cover", borderRadius: 8, marginBottom: 8 }} />}
-                  {e.note  && <div style={{ fontSize: 13, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{e.note}</div>}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {tab==="log" && (
-            <div style={{ background: "var(--color-bg)", border: "0.5px solid var(--color-border2)", borderTop: "none", borderRadius: "0 0 12px 12px", padding: 14 }}>
-              {(plant.log||[]).length===0 && <div style={{ textAlign: "center", color: "var(--color-text2)", fontSize: 13, padding: "16px 0" }}>{t.noLog}</div>}
-              {(plant.log||[]).slice().reverse().map((e,i)=>(
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "0.5px solid var(--color-border2)" }}>
-                  <span style={{ fontSize: 18 }}>{e.type==="water"?"💧":"🌿"}</span>
-                  <span style={{ fontSize: 13 }}>{e.type==="water"?t.watered:t.fertilized}</span>
-                  <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--color-text2)" }}>{fmtFull(e.ts,lang)}</span>
-                </div>
-              ))}
-            </div>
-          )}
+          <div style={{ display:"flex",gap:10 }}>
+            <button onClick={save} disabled={!name.trim()} style={{ flex:1,padding:"13px",borderRadius:12,border:"none",background:name.trim()?"#1D9E75":"#9FE1CB",color:"#fff",cursor:name.trim()?"pointer":"default",fontSize:15,fontWeight:600 }}>{t.save}</button>
+            <button onClick={onClose} style={{ flex:1,padding:"13px",borderRadius:12,border:"0.5px solid #d1d1d6",background:"none",cursor:"pointer",fontSize:15 }}>{t.cancel}</button>
+          </div>
         </div>
-      );
-    }
+      </div>
+    );
+  }
 
-    function Row({ label, val }) {
-      return (
-        <div style={{ display: "flex", gap: 10, marginBottom: 10, fontSize: 13 }}>
-          <div style={{ color: "var(--color-text2)", minWidth: 90, flexShrink: 0 }}>{label}</div>
-          <div style={{ color: "var(--color-text)", flex: 1, lineHeight: 1.5 }}>{val}</div>
-        </div>
-      );
-    }
+  // ── AI Doctor ─────────────────────────────────────────────────
+  function AIDoctor({ plants, t, lang, onClose, onUpdatePlant }) {
+    const [msgs,      setMsgs]      = useState([]);
+    const [input,     setInput]     = useState("");
+    const [loading,   setLoading]   = useState(false);
+    const [selPlant,  setSelPlant]  = useState("");
+    const [photo,     setPhoto]     = useState(null);
+    const [pType,     setPType]     = useState(null);
+    const [userNote,  setUserNote]  = useState("");
+    const [showSave,  setShowSave]  = useState(false);
+    const [lastAI,    setLastAI]    = useState("");
+    const [lastPhoto, setLastPhoto] = useState(null);
+    const [lastPType, setLastPType] = useState(null);
+    const [saveStatus,setSaveStatus]= useState("");
+    const bottomRef = useRef();
 
-    // ── Add Plant Modal ───────────────────────────────────────────
-    function AddPlantModal({ t, lang, onClose, onSave }) {
-      const [name,  setName]    = useState("");
-      const [species,setSpecies]= useState("");
-      const [loc,   setLoc]     = useState("");
-      const [wFreq, setWFreq]   = useState(3);
-      const [fFreq, setFFreq]   = useState(14);
-      const [photo, setPhoto]   = useState(null);
-      const [pType, setPType]   = useState(null);
-      const [ident, setIdent]   = useState(false);
-      const [aiNotes,setAiNotes]= useState(null);
-      const ref = useRef();
+    const send = async () => {
+      if ((!input.trim()&&!photo)||loading) return;
+      const parts=[];
+      if (photo) parts.push({ type:"image", source:{ type:"base64", media_type:pType, data:photo }});
+      if (input.trim()) parts.push({ type:"text", text:input.trim() });
+      const content = parts.length===1&&parts[0].type==="text" ? input.trim() : parts;
+      const userMsg = { role:"user", content, _photo:photo, _pType:pType, _text:input.trim() };
+      const sp=photo,spt=pType;
+      setMsgs(prev=>[...prev,userMsg]); setInput(""); setPhoto(null); setPType(null); setLoading(true);
+      const newMsgs=[...msgs,userMsg];
 
-      const handlePhoto = async e => { const f=e.target.files[0]; if(!f) return; setPhoto(await toBase64(f)); setPType(f.type); };
+      const plant=plants.find(p=>p.id.toString()===selPlant);
+      const ctx=plant?(lang==="zh"?`用户正在询问关于植物"${plant.name}"的问题。`:`User is asking about "${plant.name}".`):"";
+      const sys=lang==="zh"
+        ?`你是一位专业的园艺顾问，用中文回答问题。${ctx}如果有植物照片，请分析健康状况并给出详细的浇水和施肥建议。回答简洁实用。`
+        :`You are a professional gardening advisor. ${ctx} If a plant photo is provided, analyse health and give specific watering and fertilizing advice. Be concise and practical.`;
 
-      const identify = async () => {
-        if (!photo) return; setIdent(true);
-        try {
-          const sys = lang==="zh"
-            ? `你是一位专业的植物识别助手。分析图片并以JSON格式返回：{"name":"植物名称","species":"学名/品种","sunlight":"光照需求","soil":"土壤要求","waterFreqDays":数字,"fertFreqDays":数字,"tips":"详细养护建议，包括浇水和施肥的具体方法","raw":"植物简介和特性描述"}。仅返回JSON，无其他内容。`
-            : `You are a plant identification expert. Return JSON only: {"name":"Common name","species":"Species","sunlight":"light needs","soil":"soil requirements","waterFreqDays":number,"fertFreqDays":number,"tips":"detailed care tips including specific watering and fertilizing methods","raw":"plant description and characteristics"}. No other text.`;
-          const txt = await callClaude([{ role:"user", content:[
-            { type:"image", source:{ type:"base64", media_type:pType, data:photo } },
-            { type:"text",  text: lang==="zh"?"请识别这株植物并提供详细养护信息":"Identify this plant and provide detailed care info" }
-          ]}], sys);
-          const p = JSON.parse(txt.replace(/```json|```/g,"").trim());
-          setName(p.name||""); setSpecies(p.species||"");
-          if (p.waterFreqDays) setWFreq(p.waterFreqDays);
-          if (p.fertFreqDays)  setFFreq(p.fertFreqDays);
-          setAiNotes({ sunlight:p.sunlight, soil:p.soil, tips:p.tips, raw:p.raw, waterFreqDays:p.waterFreqDays, fertFreqDays:p.fertFreqDays });
-        } catch(e) { console.error(e); }
-        setIdent(false);
-      };
+      try {
+        const reply=await callClaude(newMsgs.map(m=>({role:m.role,content:m.content})),sys);
+        setLastAI(reply);
+        setMsgs(prev=>[...prev,{role:"assistant",content:reply}]);
+        if (sp) { setLastPhoto(sp); setLastPType(spt); setShowSave(true); }
+      } catch {
+        setMsgs(prev=>[...prev,{role:"assistant",content:lang==="zh"?"抱歉，出现错误，请重试。":"Sorry, something went wrong."}]);
+      }
+      setLoading(false);
+      setTimeout(()=>bottomRef.current?.scrollIntoView({behavior:"smooth"}),100);
+    };
 
-      const save = () => {
-        if (!name.trim()) return;
-        onSave({ id:Date.now(), name:name.trim(), species:species, location:loc, waterFreqDays:Number(wFreq), fertFreqDays:Number(fFreq), photo, photoType:pType, aiNotes, log:[], journal:[] });
-      };
+    const saveToJournal = () => {
+      const plant=plants.find(p=>p.id.toString()===selPlant); if(!plant) return;
+      setSaveStatus("saving");
+      const note=[lastAI,userNote].filter(Boolean).join("\n\n---\n");
+      onUpdatePlant({...plant,journal:[...(plant.journal||[]),{id:Date.now(),ts:Date.now(),photo:lastPhoto,photoType:lastPType,note,source:"ai-doctor"}]});
+      setSaveStatus("saved"); setShowSave(false); setUserNote("");
+      setTimeout(()=>setSaveStatus(""),2500);
+    };
 
-      return (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 50, display: "flex", alignItems: "flex-end" }} onClick={onClose}>
-          <div onClick={e=>e.stopPropagation()} style={{ background: "var(--color-bg)", width: "100%", borderRadius: "20px 20px 0 0", padding: "22px 16px", paddingBottom: "max(30px, env(safe-area-inset-bottom))", maxHeight: "94vh", overflowY: "auto", maxWidth: 680, margin: "0 auto" }}>
-            <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 18 }}>{lang==="zh"?"添加新植物":"Add New Plant"}</div>
+    return (
+      <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:50,display:"flex",alignItems:"flex-end" }} onClick={onClose}>
+        <div onClick={e=>e.stopPropagation()} style={{ background:"#fff",width:"100%",borderRadius:"20px 20px 0 0",maxHeight:"92vh",display:"flex",flexDirection:"column",maxWidth:680,margin:"0 auto" }}>
 
-            <div onClick={()=>ref.current.click()} style={{ width: "100%", height: 160, background: "#E1F5EE", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", overflow: "hidden", marginBottom: 14, border: "1.5px dashed #1D9E75" }}>
-              {photo ? <img src={`data:${pType};base64,${photo}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ color: "#1D9E75", fontSize: 15 }}>📷 {t.addPhoto}</span>}
+          <div style={{ padding:"16px 16px 12px",borderBottom:"0.5px solid #e5e5ea",display:"flex",justifyContent:"space-between",alignItems:"center" }}>
+            <span style={{ fontWeight:700,fontSize:16 }}>🌿 {t.aiDoctor}</span>
+            <div style={{ display:"flex",alignItems:"center",gap:10 }}>
+              {saveStatus==="saved"&&<span style={{ fontSize:12,color:"#1D9E75" }}>{t.savedJournal}</span>}
+              <button onClick={onClose} style={{ background:"none",border:"none",cursor:"pointer",color:"#6e6e73",fontSize:22 }}>✕</button>
             </div>
-            <input ref={ref} type="file" accept="image/*" capture="environment" onChange={handlePhoto} style={{ display: "none" }} />
+          </div>
 
-            {photo && (
-              <button onClick={identify} disabled={ident} style={{ width: "100%", padding: "12px", borderRadius: 12, border: "none", background: ident?"#9FE1CB":"#1D9E75", color: "#fff", cursor: ident?"default":"pointer", fontSize: 14, fontWeight: 500, marginBottom: 14 }}>
-                {ident ? `⏳ ${t.identifying}` : `🤖 ${t.aiIdentify}`}
-              </button>
-            )}
+          <div style={{ padding:"10px 16px",borderBottom:"0.5px solid #e5e5ea" }}>
+            <select value={selPlant} onChange={e=>setSelPlant(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:10,border:"0.5px solid #d1d1d6",background:"#f2f2f7",color:"#1c1c1e",fontSize:14 }}>
+              <option value="">{t.selectPlant}</option>
+              {plants.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
 
-            {aiNotes && (
-              <div style={{ background: "#E1F5EE", borderRadius: 12, padding: "14px", marginBottom: 14, fontSize: 13, color: "#0F6E56", lineHeight: 1.7 }}>
-                <div style={{ fontWeight: 600, marginBottom: 8 }}>🤖 {lang==="zh"?"AI 识别结果":"AI Identification Result"}</div>
-                {aiNotes.sunlight      && <div>☀️ <b>{t.sunlight}:</b> {aiNotes.sunlight}</div>}
-                {aiNotes.soil          && <div>🪴 <b>{t.soil}:</b> {aiNotes.soil}</div>}
-                {aiNotes.waterFreqDays && <div>💧 <b>{lang==="zh"?"浇水频率":"Water every"}:</b> {aiNotes.waterFreqDays} {lang==="zh"?"天":"days"}</div>}
-                {aiNotes.fertFreqDays  && <div>🌿 <b>{lang==="zh"?"施肥频率":"Fertilize every"}:</b> {aiNotes.fertFreqDays} {lang==="zh"?"天":"days"}</div>}
-                {aiNotes.tips          && <div style={{ marginTop: 6 }}>💡 {aiNotes.tips}</div>}
-                {aiNotes.raw           && <div style={{ marginTop: 6, color: "#155E48" }}>{aiNotes.raw}</div>}
+          <div style={{ flex:1,overflowY:"auto",padding:16 }}>
+            {msgs.length===0&&(
+              <div style={{ textAlign:"center",color:"#6e6e73",fontSize:13,paddingTop:24,lineHeight:1.8 }}>
+                {lang==="zh"?"📷 点击下方相机按钮拍照\nAI会分析健康状况并给出浇水施肥建议！":"📷 Tap the camera button below to take a photo\nAI will diagnose plant health and give care advice!"}
               </div>
             )}
-
-            {[[name,setName,t.plantName],[species,setSpecies,t.species],[loc,setLoc,t.location]].map(([val,setter,lbl])=>(
-              <div key={lbl} style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 12, color: "var(--color-text2)", marginBottom: 4 }}>{lbl}</div>
-                <input value={val} onChange={e=>setter(e.target.value)} style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "0.5px solid var(--color-border)", background: "var(--color-bg2)", color: "var(--color-text)", fontSize: 15, boxSizing: "border-box" }} />
+            {msgs.map((m,i)=>(
+              <div key={i} style={{ marginBottom:12,display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start" }}>
+                <div style={{ maxWidth:"82%",borderRadius:m.role==="user"?"16px 16px 4px 16px":"16px 16px 16px 4px",overflow:"hidden",background:m.role==="user"?"#1D9E75":"#f2f2f7" }}>
+                  {m._photo&&<img src={`data:${m._pType};base64,${m._photo}`} style={{ width:"100%",maxHeight:200,objectFit:"cover",display:"block" }}/>}
+                  {(m._text||m.role==="assistant")&&(
+                    <div style={{ padding:"10px 14px",color:m.role==="user"?"#fff":"#1c1c1e",fontSize:14,lineHeight:1.6 }}>
+                      {m.role==="user"?m._text:m.content}
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
+            {loading&&<div style={{ display:"flex",justifyContent:"flex-start",marginBottom:12 }}><div style={{ padding:"10px 14px",borderRadius:"16px 16px 16px 4px",background:"#f2f2f7",fontSize:14,color:"#6e6e73" }}>{t.thinking}</div></div>}
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
-              {[[wFreq,setWFreq,t.waterFreq],[fFreq,setFFreq,t.fertFreq]].map(([val,setter,lbl])=>(
-                <div key={lbl}>
-                  <div style={{ fontSize: 12, color: "var(--color-text2)", marginBottom: 4 }}>{lbl}</div>
-                  <input type="number" min="1" value={val} onChange={e=>setter(e.target.value)} style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "0.5px solid var(--color-border)", background: "var(--color-bg2)", color: "var(--color-text)", fontSize: 15, boxSizing: "border-box" }} />
+            {showSave&&(
+              <div style={{ background:"#E1F5EE",borderRadius:12,padding:14,marginTop:10 }}>
+                <div style={{ fontSize:13,fontWeight:600,color:"#0F6E56",marginBottom:10 }}>{t.savePrompt}</div>
+                {!selPlant&&<div style={{ fontSize:12,color:"#854F0B",marginBottom:8 }}>{lang==="zh"?"⚠️ 请先选择上方的植物":"⚠️ Select a plant above first"}</div>}
+                <textarea value={userNote} onChange={e=>setUserNote(e.target.value)} placeholder={t.addOwnNote} rows={2} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"0.5px solid #9FE1CB",background:"#fff",fontSize:13,resize:"none",boxSizing:"border-box",marginBottom:10 }} />
+                <div style={{ display:"flex",gap:8 }}>
+                  <button onClick={saveToJournal} disabled={!selPlant||saveStatus==="saving"} style={{ flex:1,padding:"10px",borderRadius:10,border:"none",background:selPlant?"#1D9E75":"#9FE1CB",color:"#fff",cursor:selPlant?"pointer":"default",fontSize:14,fontWeight:500 }}>
+                    {saveStatus==="saving"?(lang==="zh"?"保存中...":"Saving..."):t.saveJournal}
+                  </button>
+                  <button onClick={()=>setShowSave(false)} style={{ padding:"10px 16px",borderRadius:10,border:"0.5px solid #9FE1CB",background:"none",cursor:"pointer",fontSize:13,color:"#0F6E56" }}>{t.skipSave}</button>
                 </div>
-              ))}
-            </div>
-
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={save} disabled={!name.trim()} style={{ flex: 1, padding: "13px", borderRadius: 12, border: "none", background: name.trim()?"#1D9E75":"#9FE1CB", color: "#fff", cursor: name.trim()?"pointer":"default", fontSize: 15, fontWeight: 600 }}>{t.save}</button>
-              <button onClick={onClose} style={{ flex: 1, padding: "13px", borderRadius: 12, border: "0.5px solid var(--color-border)", background: "none", cursor: "pointer", fontSize: 15 }}>{t.cancel}</button>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    // ── AI Doctor ─────────────────────────────────────────────────
-    function AIDoctor({ plants, t, lang, onClose, onUpdatePlant }) {
-      const [msgs,      setMsgs]      = useState([]);
-      const [input,     setInput]     = useState("");
-      const [loading,   setLoading]   = useState(false);
-      const [selPlant,  setSelPlant]  = useState("");
-      const [photo,     setPhoto]     = useState(null);
-      const [pType,     setPType]     = useState(null);
-      const [userNote,  setUserNote]  = useState("");
-      const [showSave,  setShowSave]  = useState(false);
-      const [lastAI,    setLastAI]    = useState("");
-      const [lastPhoto, setLastPhoto] = useState(null);
-      const [lastPType, setLastPType] = useState(null);
-      const [saveStatus,setSaveStatus]= useState("");
-      const photoRef = useRef(), bottomRef = useRef();
-
-      const handlePhoto = async e => { const f=e.target.files[0]; if(!f) return; setPhoto(await toBase64(f)); setPType(f.type); };
-
-      const send = async () => {
-        if ((!input.trim()&&!photo)||loading) return;
-        const parts = [];
-        if (photo) parts.push({ type:"image", source:{ type:"base64", media_type:pType, data:photo }});
-        if (input.trim()) parts.push({ type:"text", text:input.trim() });
-        const content = parts.length===1&&parts[0].type==="text" ? input.trim() : parts;
-        const userMsg = { role:"user", content, _photo:photo, _pType:pType, _text:input.trim() };
-        const sp=photo, spt=pType;
-        const newMsgs=[...msgs,userMsg];
-        setMsgs(newMsgs); setInput(""); setPhoto(null); setPType(null); setLoading(true);
-
-        const plant=plants.find(p=>p.id.toString()===selPlant);
-        const ctx=plant?(lang==="zh"?`用户正在询问关于植物"${plant.name}"的问题。`:`User is asking about "${plant.name}".`):"";
-        const sys=lang==="zh"
-          ?`你是一位专业的园艺顾问，用中文回答问题。${ctx}如果有植物照片，请分析健康状况并给出详细的浇水和施肥建议。回答简洁实用。`
-          :`You are a professional gardening advisor. ${ctx} If a plant photo is provided, analyse health and give specific watering and fertilizing advice. Be concise and practical.`;
-
-        try {
-          const reply=await callClaude(newMsgs.map(m=>({role:m.role,content:m.content})),sys);
-          setLastAI(reply); setMsgs([...newMsgs,{role:"assistant",content:reply}]);
-          if (sp) { setLastPhoto(sp); setLastPType(spt); setShowSave(true); }
-        } catch {
-          setMsgs([...newMsgs,{role:"assistant",content:lang==="zh"?"抱歉，出现错误，请重试。":"Sorry, something went wrong."}]);
-        }
-        setLoading(false);
-        setTimeout(()=>bottomRef.current?.scrollIntoView({behavior:"smooth"}),100);
-      };
-
-      const saveToJournal = () => {
-        const plant=plants.find(p=>p.id.toString()===selPlant); if(!plant) return;
-        setSaveStatus("saving");
-        const note=[lastAI,userNote].filter(Boolean).join("\n\n---\n");
-        onUpdatePlant({...plant, journal:[...(plant.journal||[]),{ id:Date.now(), ts:Date.now(), photo:lastPhoto, photoType:lastPType, note, source:"ai-doctor" }]});
-        setSaveStatus("saved"); setShowSave(false); setUserNote("");
-        setTimeout(()=>setSaveStatus(""),2500);
-      };
-
-      return (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 50, display: "flex", alignItems: "flex-end" }} onClick={onClose}>
-          <div onClick={e=>e.stopPropagation()} style={{ background: "var(--color-bg)", width: "100%", borderRadius: "20px 20px 0 0", maxHeight: "92vh", display: "flex", flexDirection: "column", maxWidth: 680, margin: "0 auto" }}>
-
-            <div style={{ padding: "16px 16px 12px", borderBottom: "0.5px solid var(--color-border2)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontWeight: 700, fontSize: 16 }}>🌿 {t.aiDoctor}</span>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                {saveStatus==="saved" && <span style={{ fontSize: 12, color: "#1D9E75" }}>{t.savedJournal}</span>}
-                <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-text2)", fontSize: 22 }}>✕</button>
-              </div>
-            </div>
-
-            <div style={{ padding: "10px 16px", borderBottom: "0.5px solid var(--color-border2)" }}>
-              <select value={selPlant} onChange={e=>setSelPlant(e.target.value)} style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: "0.5px solid var(--color-border)", background: "var(--color-bg2)", color: "var(--color-text)", fontSize: 14 }}>
-                <option value="">{t.selectPlant}</option>
-                {plants.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            </div>
-
-            <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
-              {msgs.length===0 && (
-                <div style={{ textAlign: "center", color: "var(--color-text2)", fontSize: 13, paddingTop: 24, lineHeight: 1.7 }}>
-                  {lang==="zh" ? "📷 拍照或上传植物照片\nAI会分析健康状况并给出浇水施肥建议！" : "📷 Take or upload a plant photo\nAI will diagnose health and give watering & fertilizing advice!"}
-                </div>
-              )}
-              {msgs.map((m,i)=>(
-                <div key={i} style={{ marginBottom: 12, display: "flex", justifyContent: m.role==="user"?"flex-end":"flex-start" }}>
-                  <div style={{ maxWidth: "82%", borderRadius: m.role==="user"?"16px 16px 4px 16px":"16px 16px 16px 4px", overflow: "hidden", background: m.role==="user"?"#1D9E75":"var(--color-bg2)" }}>
-                    {m._photo && <img src={`data:${m._pType};base64,${m._photo}`} style={{ width: "100%", maxHeight: 200, objectFit: "cover", display: "block" }} />}
-                    {(m._text||m.role==="assistant") && (
-                      <div style={{ padding: "10px 14px", color: m.role==="user"?"#fff":"var(--color-text)", fontSize: 14, lineHeight: 1.6 }}>
-                        {m.role==="user" ? m._text : m.content}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {loading && (
-                <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: 12 }}>
-                  <div style={{ padding: "10px 14px", borderRadius: "16px 16px 16px 4px", background: "var(--color-bg2)", fontSize: 14, color: "var(--color-text2)" }}>{t.thinking}</div>
-                </div>
-              )}
-
-              {showSave && (
-                <div style={{ background: "#E1F5EE", borderRadius: 12, padding: 14, marginTop: 10 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#0F6E56", marginBottom: 10 }}>{t.savePrompt}</div>
-                  {!selPlant && <div style={{ fontSize: 12, color: "#854F0B", marginBottom: 8 }}>{lang==="zh"?"⚠️ 请先选择上方的植物":"⚠️ Select a plant above first"}</div>}
-                  <textarea value={userNote} onChange={e=>setUserNote(e.target.value)} placeholder={t.addOwnNote} rows={2} style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "0.5px solid #9FE1CB", background: "#fff", fontSize: 13, resize: "none", boxSizing: "border-box", marginBottom: 10 }} />
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={saveToJournal} disabled={!selPlant||saveStatus==="saving"} style={{ flex: 1, padding: "10px", borderRadius: 10, border: "none", background: selPlant?"#1D9E75":"#9FE1CB", color: "#fff", cursor: selPlant?"pointer":"default", fontSize: 14, fontWeight: 500 }}>
-                      {saveStatus==="saving"?(lang==="zh"?"保存中...":"Saving..."):t.saveJournal}
-                    </button>
-                    <button onClick={()=>setShowSave(false)} style={{ padding: "10px 16px", borderRadius: 10, border: "0.5px solid #9FE1CB", background: "none", cursor: "pointer", fontSize: 13, color: "#0F6E56" }}>{t.skipSave}</button>
-                  </div>
-                </div>
-              )}
-              <div ref={bottomRef} />
-            </div>
-
-            {photo && (
-              <div style={{ padding: "8px 16px 0", display: "flex", alignItems: "center", gap: 10 }}>
-                <img src={`data:${pType};base64,${photo}`} style={{ width: 54, height: 54, borderRadius: 8, objectFit: "cover" }} />
-                <span style={{ fontSize: 13, color: "var(--color-text2)", flex: 1 }}>{t.photoReady}</span>
-                <button onClick={()=>{setPhoto(null);setPType(null);}} style={{ fontSize: 13, padding: "5px 10px", borderRadius: 6, border: "0.5px solid var(--color-border)", background: "none", cursor: "pointer", color: "#E24B4A" }}>✕</button>
               </div>
             )}
+            <div ref={bottomRef} />
+          </div>
 
-            <div style={{ padding: "12px 16px", paddingBottom: "max(20px, env(safe-area-inset-bottom))", borderTop: "0.5px solid var(--color-border2)", display: "flex", gap: 8, alignItems: "center" }}>
-              <button onClick={()=>photoRef.current.click()} style={{ padding: "11px 13px", borderRadius: 24, border: "0.5px solid var(--color-border)", background: "var(--color-bg2)", cursor: "pointer", fontSize: 18, flexShrink: 0 }}>📷</button>
-              <input ref={photoRef} type="file" accept="image/*" capture="environment" onChange={handlePhoto} style={{ display: "none" }} />
-              <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&!e.shiftKey&&send()} placeholder={t.askAnything} style={{ flex: 1, padding: "11px 16px", borderRadius: 24, border: "0.5px solid var(--color-border)", background: "var(--color-bg2)", color: "var(--color-text)", fontSize: 14, outline: "none" }} />
-              <button onClick={send} disabled={loading||(!input.trim()&&!photo)} style={{ padding: "11px 18px", borderRadius: 24, border: "none", background: (loading||(!input.trim()&&!photo))?"#9FE1CB":"#1D9E75", color: "#fff", cursor: (loading||(!input.trim()&&!photo))?"default":"pointer", fontSize: 14, fontWeight: 600, flexShrink: 0 }}>{t.send}</button>
+          {/* Photo preview */}
+          {photo&&(
+            <div style={{ padding:"8px 16px 0",display:"flex",alignItems:"center",gap:10 }}>
+              <img src={`data:${pType};base64,${photo}`} style={{ width:54,height:54,borderRadius:8,objectFit:"cover" }}/>
+              <span style={{ fontSize:13,color:"#6e6e73",flex:1 }}>{t.photoReady}</span>
+              <button onClick={()=>{setPhoto(null);setPType(null);}} style={{ fontSize:13,padding:"5px 10px",borderRadius:6,border:"0.5px solid #d1d1d6",background:"none",cursor:"pointer",color:"#E24B4A" }}>✕</button>
             </div>
+          )}
+
+          {/* Input bar with iOS-safe camera button */}
+          <div style={{ padding:"12px 16px",paddingBottom:"max(20px,env(safe-area-inset-bottom))",borderTop:"0.5px solid #e5e5ea",display:"flex",gap:8,alignItems:"center" }}>
+            <PhotoButton
+              onPhoto={(b64,type)=>{setPhoto(b64);setPType(type);}}
+              style={{ padding:"11px 13px",borderRadius:24,border:"0.5px solid #d1d1d6",background:"#f2f2f7",fontSize:18,flexShrink:0,minWidth:48 }}
+            >📷</PhotoButton>
+            <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&!e.shiftKey&&send()} placeholder={t.askAnything} style={{ flex:1,padding:"11px 16px",borderRadius:24,border:"0.5px solid #d1d1d6",background:"#f2f2f7",color:"#1c1c1e",fontSize:14,outline:"none" }} />
+            <button onClick={send} disabled={loading||(!input.trim()&&!photo)} style={{ padding:"11px 18px",borderRadius:24,border:"none",background:(loading||(!input.trim()&&!photo))?"#9FE1CB":"#1D9E75",color:"#fff",cursor:(loading||(!input.trim()&&!photo))?"default":"pointer",fontSize:14,fontWeight:600,flexShrink:0 }}>{t.send}</button>
           </div>
         </div>
-      );
-    }
+      </div>
+    );
+  }
 
-    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
-  </script>
+  ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
 </body>
 </html>
