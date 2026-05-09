@@ -68,8 +68,11 @@
   </style>
 </head>
 <body>
-<div id="root"></div>
+<div id="root"><h1 style="color:green;padding:20px">Flask working!</h1></div>
 <script type="text/babel">
+  console.log("Babel script started");
+  document.getElementById("root").innerHTML = "<h1 style='color:green;padding:20px'>React starting...</h1>";
+  alert("Babel loaded!");
   const { useState, useRef, useEffect } = React;
 
   const SUPA_URL    = "https://serucsjjrgwaedwlnyxb.supabase.co";
